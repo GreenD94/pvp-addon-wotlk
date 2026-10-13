@@ -94,6 +94,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - **Posición:** botón Mover/Fijar barras para arrastrarlas a mano (mientras se mueven se ven todos los iconos) y casilla Vertical por cada barra y el aviso. Se probó una cuadrícula 3x3 de zonas y un deslizador de alineación, pero se quitaron por preferencia.
 - **General:** botón Restaurar configuración (con confirmación) que vuelve todo a los valores originales. La ventana siempre abre en General.
 - **Barra de favoritas:** en Habilidades, clic derecho en un icono lo marca con una estrella y lo mueve a una cuarta barra (Favoritas) en vez de la suya. Tiene su propio tamaño, posición y opción vertical. Los procs no pueden ser favoritos (van al aviso grande).
+- **Perfiles:** pestaña para crear (Nuevo, con la configuración original), copiar el actual, borrar y cambiar de perfil. Cada personaje recuerda su perfil. Restaurar configuración afecta solo al perfil activo. La configuración anterior pasa sola al perfil "Default".
 - Los errores de la ventana de opciones se guardan en el registro aunque `/wready debug` esté apagado.
 - **Raciales** añadidas a la barra defensiva (Furia sangrienta, Rabiar, Pisotón de guerra, Voluntad de los Renegados, Cada hombre por sí mismo, Forma de piedra, Artista del escape, Ofrenda de los naaru, Fusión de las sombras).
 
@@ -112,7 +113,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
   - [ ] alineación (probada y descartada por ahora);
   - [x] elegir qué habilidades rastrear.
 - [x] Barra de habilidades favoritas.
-- [ ] Perfiles de configuración guardados.
+- [x] Perfiles de configuración guardados.
 - [ ] Soporte para más clases, con elección de clase y detección automática.
 - [ ] Mostrar en grande cuando un aliado tiene un control (CC), mientras le dure.
 - [ ] Mostrar en grande cuando un jugador enemigo lanza un hechizo, o qué habilidades tiene disponibles.

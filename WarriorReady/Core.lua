@@ -22,13 +22,14 @@ local defaults = {
     },
     disabled = {},  -- [spellID] = true
     favorites = {}, -- [spellID] = true: va a la barra de favoritas en vez de la suya
-    debug = false,
-    log = {},
 }
+
+local DEFAULT_PROFILE = "Default"
 
 local GROUP_LABEL = { main = "Aviso", cd = "Ofensivas", def = "Defensivas", fav = "Favoritas" }
 
-local db
+local root  -- WarriorReadyDB: perfiles, perfil de cada personaje y registro de diagnostico
+local db    -- perfil activo
 local known = {}
 local anchors = {}
 local buttons = { main = {}, cd = {}, def = {}, fav = {} }
@@ -45,12 +46,19 @@ local function Print(msg)
 end
 
 -- Registro que se guarda en SavedVariables al hacer /reload o salir
-local function Log(msg)
-    if not db or not db.debug then return end
-    local log = db.log
+local function Log(msg, force)
+    if not root or not (root.debug or force) then return end
+    local log = root.log
     log[#log + 1] = string.format("%.2f %s", GetTime(), msg)
     if #log > LOG_MAX then table.remove(log, 1) end
 end
+
+-- Los errores se guardan aunque /wready debug este apagado
+local function LogError(msg)
+    Log("ERROR " .. tostring(msg), true)
+    Print("|cffff4040error:|r " .. tostring(msg))
+end
+ns.LogError = LogError
 
 local function CopyDefaults(src, dst)
     for k, v in pairs(src) do
@@ -382,11 +390,7 @@ local function OnUpdate(_, elapsed)
     local ok, err = pcall(Render)
     if not ok and err ~= lastError then
         lastError = err
-        local saved = db.debug
-        db.debug = true
-        Log("ERROR " .. tostring(err))
-        db.debug = saved
-        Print("|cffff4040error:|r " .. tostring(err))
+        LogError(err)
     end
 end
 
@@ -434,9 +438,9 @@ SlashCmdList.WARRIORREADY = function(msg)
         testMode = true; testUntil = GetTime() + TEST_TIME
         Print("modo prueba durante " .. TEST_TIME .. " segundos.")
     elseif cmd == "debug" then
-        db.debug = not db.debug
-        if db.debug then wipe(db.log); ScanSpellbook() end
-        Print("registro " .. (db.debug and "activado (se guarda al hacer /reload)" or "desactivado"))
+        root.debug = not root.debug
+        if root.debug then wipe(root.log); ScanSpellbook() end
+        Print("registro " .. (root.debug and "activado (se guarda al hacer /reload)" or "desactivado"))
     elseif cmd == "size" or cmd == "max" then
         local g, v = GROUP_ALIAS[a or ""], tonumber(b or "")
         if not g or not v then Print("uso: /wready " .. cmd .. " aviso|ofensivas|defensivas <numero>") return end
@@ -476,25 +480,105 @@ end
 function ns.GetDB() return db end
 function ns.GetKnown() return known end
 ns.ApplyGroup = function() ApplyAll() end
--- Guarda en el registro aunque /wready debug este apagado (para errores)
-function ns.LogError(msg)
-    local saved = db.debug
-    db.debug = true
-    Log("ERROR " .. tostring(msg))
-    db.debug = saved
-    Print("|cffff4040error:|r " .. tostring(msg))
+
+---------------------------------------------------------------------------
+-- Perfiles
+---------------------------------------------------------------------------
+
+local function CharKey()
+    return UnitName("player") .. " - " .. GetRealmName()
 end
 
--- Vuelve a la configuracion original (conserva el registro de diagnostico)
-function ns.ResetDefaults()
-    local log = db.log
-    WarriorReadyDB = {}
-    db = WarriorReadyDB
+local function DeepCopy(t)
+    local c = {}
+    for k, v in pairs(t) do c[k] = type(v) == "table" and DeepCopy(v) or v end
+    return c
+end
+
+-- Actualiza opciones guardadas por versiones anteriores del addon
+local function MigrateProfile(p)
+    p.warn, p.groupOverride, p.optionsTab = nil, nil, nil
+    if (p.version or 1) < 2 then p.popTime = 2 end
+    if (p.version or 1) < 3 then p.groups.def.max = 12 end
+    if (p.version or 1) < 4 then
+        for _, cfg in pairs(p.groups) do cfg.zone, cfg.align = nil, "center" end
+    end
+    p.version = 4
+end
+
+-- Activa un perfil (lo crea vacio si no existe) y lo aplica en pantalla
+local function UseProfile(name)
+    if not root.profiles[name] then root.profiles[name] = { version = 4 } end
+    root.chars[CharKey()] = name
+    db = root.profiles[name]
     CopyDefaults(defaults, db)
-    db.log = log
-    db.version = 4
-    ApplyAll()
-    ApplyLock()
+    MigrateProfile(db)
+    if anchors.main then
+        ApplyAll()
+        ApplyLock()
+    end
+end
+
+-- Pasa de la version sin perfiles (todo en la raiz) a perfiles
+local function InitRoot()
+    WarriorReadyDB = WarriorReadyDB or {}
+    root = WarriorReadyDB
+    if not root.profiles then
+        local legacy = {}
+        for k, v in pairs(root) do
+            if k ~= "log" and k ~= "debug" then legacy[k] = v end
+        end
+        for k in pairs(legacy) do root[k] = nil end
+        root.profiles = { [DEFAULT_PROFILE] = legacy }
+    end
+    root.chars = root.chars or {}
+    root.log = root.log or {}
+    local name = root.chars[CharKey()]
+    if not name or not root.profiles[name] then name = DEFAULT_PROFILE end
+    UseProfile(name)
+end
+
+function ns.GetCurrentProfile() return root.chars[CharKey()] end
+
+function ns.GetProfiles()
+    local names = {}
+    for name in pairs(root.profiles) do names[#names + 1] = name end
+    table.sort(names)
+    return names
+end
+
+function ns.SetProfile(name)
+    UseProfile(name)
+    Print("perfil: " .. name)
+end
+
+-- Crea un perfil nuevo (vacio o copia del actual) y lo activa. Devuelve false si el nombre no vale.
+function ns.NewProfile(name, copyCurrent)
+    name = strtrim(name or "")
+    if name == "" or root.profiles[name] then return false end
+    root.profiles[name] = copyCurrent and DeepCopy(db) or { version = 4 }
+    ns.SetProfile(name)
+    return true
+end
+
+-- Borra el perfil activo y pasa a otro. No se puede borrar el ultimo.
+function ns.DeleteProfile()
+    local names = ns.GetProfiles()
+    if #names <= 1 then return false end
+    local current = ns.GetCurrentProfile()
+    root.profiles[current] = nil
+    for char, p in pairs(root.chars) do
+        if p == current then root.chars[char] = nil end
+    end
+    local fallback = root.profiles[DEFAULT_PROFILE] and DEFAULT_PROFILE or ns.GetProfiles()[1]
+    ns.SetProfile(fallback)
+    return true
+end
+
+-- Vuelve el perfil activo a la configuracion original
+function ns.ResetDefaults()
+    root.profiles[ns.GetCurrentProfile()] = { version = 4 }
+    UseProfile(ns.GetCurrentProfile())
     Print("configuracion restaurada.")
 end
 
@@ -525,24 +609,7 @@ driver:SetScript("OnEvent", function(self, event)
             SlashCmdList.WARRIORREADY = function() Print("solo funciona con guerreros.") end
             return
         end
-        WarriorReadyDB = WarriorReadyDB or {}
-        db = WarriorReadyDB
-        CopyDefaults(defaults, db)
-        db.warn, db.groupOverride = nil, nil  -- opciones de versiones anteriores
-        if (db.version or 1) < 2 then
-            db.popTime = 2
-            db.version = 2
-        end
-        if db.version < 3 then
-            db.groups.def.max = 12  -- la barra defensiva ahora tiene mas habilidades
-            db.version = 3
-        end
-        if db.version < 4 then
-            -- se quitaron la cuadricula de zonas y el deslizador de alineacion
-            for _, cfg in pairs(db.groups) do cfg.zone, cfg.align = nil, "center" end
-            db.optionsTab = nil
-            db.version = 4
-        end
+        InitRoot()
 
         CreateAnchor("main")
         CreateAnchor("cd")

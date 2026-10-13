@@ -17,7 +17,10 @@ local TAB_DEFS = {
     { key = "spells",  label = "Habilidades" },
     { key = "sizes",   label = "Tamaños" },
     { key = "position", label = "Posición" },
+    { key = "profiles", label = "Perfiles" },
 }
+
+local profileButtons, currentProfileLabel, deleteProfileButton = {}, nil, nil
 
 local positionControls = {}  -- [grupo] = casilla Vertical
 local moveButton
@@ -322,6 +325,133 @@ local function BuildPositionPage(page)
 end
 
 ---------------------------------------------------------------------------
+-- Pestana Perfiles
+---------------------------------------------------------------------------
+
+local function AfterProfileChange()
+    UpdateMinimapPosition()
+    RefreshWindow("profiles")
+end
+
+local function BuildProfileList()
+    local page = pages.profiles
+    local current = ns.GetCurrentProfile()
+    local names = ns.GetProfiles()
+    currentProfileLabel:SetText("Perfil activo: |cffffffff" .. current .. "|r")
+
+    local y = CONTENT_TOP - 112
+    for i, name in ipairs(names) do
+        local b = profileButtons[i]
+        if not b then
+            b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+            b:SetWidth(220); b:SetHeight(22)
+            b.mark = page:CreateTexture(nil, "BACKGROUND")
+            b.mark:SetTexture(1, 0.82, 0, 0.9)
+            b.mark:SetPoint("TOPLEFT", b, "TOPLEFT", -3, 3)
+            b.mark:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 3, -3)
+            b:SetScript("OnClick", function(self)
+                ns.SetProfile(self.name)
+                AfterProfileChange()
+            end)
+            profileButtons[i] = b
+        end
+        b.name = name
+        b:SetText(name)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", PAD, y)
+        local selected = name == current
+        if selected then b.mark:Show() else b.mark:Hide() end
+        b:GetFontString():SetTextColor(selected and 1 or 0.7, selected and 1 or 0.7, selected and 1 or 0.7)
+        b:Show()
+        y = y - 28
+    end
+    for i = #names + 1, #profileButtons do
+        profileButtons[i]:Hide()
+        profileButtons[i].mark:Hide()
+    end
+
+    if #names > 1 then deleteProfileButton:Enable() else deleteProfileButton:Disable() end
+    page.height = -y + 30
+end
+
+local function BuildProfilesPage(page)
+    local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
+    help:SetText("Cada personaje recuerda qué perfil usa.")
+
+    currentProfileLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    currentProfileLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 22)
+
+    local actions = {
+        { label = "Nuevo",  popup = "WARRIORREADY_NEW_PROFILE" },
+        { label = "Copiar", popup = "WARRIORREADY_COPY_PROFILE" },
+        { label = "Borrar", popup = "WARRIORREADY_DELETE_PROFILE" },
+    }
+    for i, act in ipairs(actions) do
+        local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+        b:SetWidth(100); b:SetHeight(22)
+        b:SetPoint("TOPLEFT", PAD + (i - 1) * 106, CONTENT_TOP - 48)
+        b:SetText(act.label)
+        b:SetScript("OnClick", function()
+            StaticPopup_Show(act.popup, ns.GetCurrentProfile())
+        end)
+        if act.label == "Borrar" then deleteProfileButton = b end
+    end
+
+    local listLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    listLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 88)
+    listLabel:SetText("Perfiles guardados (clic para cambiar):")
+end
+
+-- Ventanas emergentes con caja de texto para el nombre del perfil
+local function NameDialog(text, copyCurrent)
+    local function accept(popup)
+        local name = _G[popup:GetName() .. "EditBox"]:GetText()
+        if ns.NewProfile(name, copyCurrent) then
+            AfterProfileChange()
+        else
+            UIErrorsFrame:AddMessage("Nombre vacío o ya existe.", 1, 0.2, 0.2)
+        end
+    end
+    return {
+        text = text,
+        button1 = ACCEPT,
+        button2 = CANCEL,
+        hasEditBox = 1,
+        maxLetters = 32,
+        OnShow = function(self)
+            local box = _G[self:GetName() .. "EditBox"]
+            box:SetText("")
+            box:SetFocus()
+        end,
+        OnAccept = accept,
+        EditBoxOnEnterPressed = function(self)
+            local popup = self:GetParent()
+            accept(popup)
+            popup:Hide()
+        end,
+        EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+    }
+end
+
+StaticPopupDialogs["WARRIORREADY_NEW_PROFILE"] = NameDialog("Nombre del nuevo perfil (empieza con la configuración original):", false)
+StaticPopupDialogs["WARRIORREADY_COPY_PROFILE"] = NameDialog("Copiar el perfil %s con el nombre:", true)
+StaticPopupDialogs["WARRIORREADY_DELETE_PROFILE"] = {
+    text = "¿Borrar el perfil %s?",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function()
+        if ns.DeleteProfile() then AfterProfileChange() end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+---------------------------------------------------------------------------
 -- Ventana de opciones
 ---------------------------------------------------------------------------
 
@@ -354,7 +484,7 @@ local function CreateWindow()
     local f = CreateFrame("Frame", "WarriorReadyOptions", UIParent)
     f:SetWidth(SIDEBAR_W + PAD * 2 + COLS * (ICON_SIZE + ICON_GAP) - ICON_GAP); f:SetHeight(130)
     f:SetPoint("CENTER")
-    f:SetFrameStrata("DIALOG")
+    f:SetFrameStrata("HIGH")  -- por debajo de las ventanas emergentes (DIALOG)
     f:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -434,6 +564,7 @@ local function CreateWindow()
 
     BuildSizesPage(pages.sizes)
     BuildPositionPage(pages.position)
+    BuildProfilesPage(pages.profiles)
 
     f:SetScript("OnShow", function()
         local ok, err = pcall(RefreshWindow)
@@ -441,17 +572,18 @@ local function CreateWindow()
     end)
 end
 
--- Al abrir la ventana: refresca todo y empieza siempre en General
-function RefreshWindow()
+-- Refresca todo con el perfil activo. Al abrir la ventana empieza siempre en General.
+function RefreshWindow(tab)
     enableCheck:SetChecked(ns.GetDB().enabled)
     BuildSpellList()
     UpdateSizeButtons()
     UpdatePositionControls()
-    ns.SelectTab("general")
+    BuildProfileList()
+    ns.SelectTab(tab or "general")
 end
 
 StaticPopupDialogs["WARRIORREADY_RESET"] = {
-    text = "¿Restaurar toda la configuración de WarriorReady a los valores originales?",
+    text = "¿Restaurar la configuración del perfil actual a los valores originales?",
     button1 = YES,
     button2 = NO,
     OnAccept = function()
