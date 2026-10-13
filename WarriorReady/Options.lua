@@ -15,7 +15,8 @@ local TAB_DEFS = {
     { key = "general", label = "General" },
     { key = "spells",  label = "Habilidades" },
 }
-local iconPool, headers = {}, {}
+local iconPool, headers, sectionButtons = {}, {}, {}
+local UpdateSectionButton
 
 ---------------------------------------------------------------------------
 -- Lista de habilidades con iconos
@@ -39,6 +40,38 @@ local function ShowSpellTooltip(b)
     GameTooltip:Show()
 end
 
+local function AnyEnabled(list)
+    local disabled = ns.GetDB().disabled
+    for _, s in ipairs(list) do
+        if not disabled[s.id] then return true end
+    end
+    return false
+end
+
+-- "Deseleccionar todos" si hay al menos una activa, "Seleccionar todos" si no hay ninguna
+function UpdateSectionButton(btn)
+    btn:SetText(AnyEnabled(btn.list) and "Deseleccionar todos" or "Seleccionar todos")
+end
+
+local function GetSectionButton(i)
+    if sectionButtons[i] then return sectionButtons[i] end
+    local btn = CreateFrame("Button", nil, pages.spells, "UIPanelButtonTemplate")
+    btn:SetWidth(140); btn:SetHeight(20)
+    btn:SetScript("OnClick", function(self)
+        local disabled = ns.GetDB().disabled
+        local turnOff = AnyEnabled(self.list)
+        for _, s in ipairs(self.list) do
+            disabled[s.id] = turnOff or nil
+        end
+        for _, b in ipairs(iconPool) do
+            if b.sectionButton == self then UpdateIcon(b) end
+        end
+        UpdateSectionButton(self)
+    end)
+    sectionButtons[i] = btn
+    return btn
+end
+
 local function GetIconButton(i)
     if iconPool[i] then return iconPool[i] end
     local b = CreateFrame("Button", nil, pages.spells)
@@ -57,6 +90,7 @@ local function GetIconButton(i)
         local db = ns.GetDB()
         db.disabled[self.id] = not db.disabled[self.id] or nil
         UpdateIcon(self)
+        UpdateSectionButton(self.sectionButton)
         ShowSpellTooltip(self)
     end)
     b:SetScript("OnEnter", ShowSpellTooltip)
@@ -78,7 +112,7 @@ local function BuildSpellList()
     local sections = {
         { title = "Ofensivas", list = {} },
         { title = "Defensivas", list = {} },
-        { title = "Procs (en el aviso grande mientras duran)", list = {} },
+        { title = "Procs (aviso grande)", list = {} },
     }
     for _, s in ipairs(ns.GetKnown()) do
         table.insert(s.def and sections[2].list or sections[1].list, s)
@@ -93,12 +127,20 @@ local function BuildSpellList()
         h:ClearAllPoints()
         h:SetPoint("TOPLEFT", PAD, y)
         h:SetText(sec.title)
-        y = y - 18
+
+        local sb = GetSectionButton(si)
+        sb.list = sec.list
+        sb:ClearAllPoints()
+        sb:SetPoint("TOPRIGHT", -PAD, y + 3)
+        UpdateSectionButton(sb)
+        if #sec.list > 0 then sb:Show() else sb:Hide() end
+        y = y - 24
 
         for i, s in ipairs(sec.list) do
             n = n + 1
             local b = GetIconButton(n)
             b.id = s.id
+            b.sectionButton = sb
             b.icon:SetTexture(s.icon)
             local col, row = (i - 1) % COLS, math.floor((i - 1) / COLS)
             b:ClearAllPoints()
