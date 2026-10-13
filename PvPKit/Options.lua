@@ -700,7 +700,14 @@ local function CreateMinimapButton()
     bg:SetPoint("TOPLEFT", 7, -5)
 
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetTexture(ns.classIcon)  -- icono de la clase detectada
+    -- Emblema de la clase detectada (el mismo de la pantalla de crear personaje)
+    local coords = CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[ns.class]
+    if coords then
+        b.icon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
+        b.icon:SetTexCoord(unpack(coords))
+    else
+        b.icon:SetTexture(ns.classIcon)
+    end
     b.icon:SetWidth(17); b.icon:SetHeight(17)
     b.icon:SetPoint("TOPLEFT", 7, -6)
 
