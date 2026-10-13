@@ -91,7 +91,9 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - **Seleccionar/Deseleccionar todos** por sección (Ofensivas, Defensivas, Procs). El texto cambia según haya al menos una activa o ninguna.
 - **Pestañas verticales** a la izquierda: General, Habilidades, Tamaños.
 - **Tamaños:** deslizador de 4 posiciones XS (32), S (44), M (60) y L (80) para el aviso grande y cada barra. Se aplica al momento con vista previa de 5 s.
-- **Posición:** cuadrícula 3x3 por cada barra y el aviso (TL, T, TR, L, M, R, BL, B, BR) que coloca el elemento en ese punto de la pantalla, con márgenes para no tapar los marcos del juego (minimapa, chat, barras de acción, retratos). Si varios elementos eligen la misma zona se apilan. También: casilla Vertical, deslizador de alineación (se ajusta solo al elegir zona) y botón Mover/Fijar barras para ajustar a mano.
+- **Posición:** botón Mover/Fijar barras para arrastrarlas a mano (mientras se mueven se ven todos los iconos) y casilla Vertical por cada barra y el aviso. Se probó una cuadrícula 3x3 de zonas y un deslizador de alineación, pero se quitaron por preferencia.
+- **General:** botón Restaurar configuración (con confirmación) que vuelve todo a los valores originales. La ventana siempre abre en General.
+- Los errores de la ventana de opciones se guardan en el registro aunque `/wready debug` esté apagado.
 - **Raciales** añadidas a la barra defensiva (Furia sangrienta, Rabiar, Pisotón de guerra, Voluntad de los Renegados, Cada hombre por sí mismo, Forma de piedra, Artista del escape, Ofrenda de los naaru, Fusión de las sombras).
 
 ## Pendiente
@@ -106,7 +108,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
   - [x] tamaño de las barras: grande, mediano, pequeño, extra pequeño;
   - [x] posición de las barras;
   - [x] dirección horizontal o vertical;
-  - [x] alineación: izquierda, centro, derecha / arriba, centro, abajo;
+  - [ ] alineación (probada y descartada por ahora);
   - [x] elegir qué habilidades rastrear.
 - [ ] Tercera barra de habilidades favoritas.
 - [ ] Perfiles de configuración guardados.

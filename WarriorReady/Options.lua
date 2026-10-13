@@ -19,13 +19,9 @@ local TAB_DEFS = {
     { key = "position", label = "Posición" },
 }
 
-local ALIGNS = { "start", "center", "end" }
-local ALIGN_LABELS = {
-    H = { "Izquierda", "Centro", "Derecha" },
-    V = { "Arriba", "Centro", "Abajo" },
-}
-local positionControls = {}  -- [grupo] = { check = ..., slider = ... }
+local positionControls = {}  -- [grupo] = casilla Vertical
 local moveButton
+local RefreshWindow, UpdateMinimapPosition  -- definidas mas abajo
 
 local SIZE_PRESETS = {
     { label = "XS", name = "Extra pequeño", size = 32 },
@@ -248,94 +244,18 @@ end
 -- Pestana Posicion
 ---------------------------------------------------------------------------
 
-local function AlignIndex(align)
-    for i, a in ipairs(ALIGNS) do
-        if a == align then return i end
-    end
-    return 2
-end
-
-local function SetAlignText(slider, dir, i)
-    local labels = ALIGN_LABELS[dir]
-    _G[slider:GetName() .. "Low"]:SetText(labels[1])
-    _G[slider:GetName() .. "High"]:SetText(labels[3])
-    _G[slider:GetName() .. "Text"]:SetText("Alineación: " .. labels[i])
-end
-
-local ZONE_GRID = {
-    { "TL", "T", "TR" },
-    { "L",  "M", "R"  },
-    { "BL", "B", "BR" },
-}
-local ZONE_NAMES = {
-    TL = "Arriba izquierda", T = "Arriba", TR = "Arriba derecha",
-    L = "Izquierda", M = "Medio", R = "Derecha",
-    BL = "Abajo izquierda", B = "Abajo", BR = "Abajo derecha",
-}
-
--- Alineacion natural de cada zona: los iconos crecen alejandose del borde de la pantalla
-local function AutoAlign(zone, dir)
-    for row, cols in ipairs(ZONE_GRID) do
-        for col, z in ipairs(cols) do
-            if z == zone then return ALIGNS[dir == "V" and row or col] end
-        end
-    end
-end
-
 local function UpdatePositionControls()
     local db = ns.GetDB()
-    for g, c in pairs(positionControls) do
-        local cfg = db.groups[g]
-        local i = AlignIndex(cfg.align)
-        c.check:SetChecked(cfg.dir == "V")
-        c.slider.updating = true
-        c.slider:SetValue(i)
-        c.slider.updating = false
-        SetAlignText(c.slider, cfg.dir, i)
-        for zone, b in pairs(c.zones) do
-            if cfg.zone == zone then
-                b.mark:Show(); b:GetFontString():SetTextColor(1, 1, 1)
-            else
-                b.mark:Hide(); b:GetFontString():SetTextColor(0.6, 0.6, 0.6)
-            end
-        end
+    for g, check in pairs(positionControls) do
+        check:SetChecked(db.groups[g].dir == "V")
     end
     moveButton:SetText(db.locked and "Mover barras" or "Fijar barras")
-end
-
-local function CreateZoneButton(page, grp, zone, x, y)
-    local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    b:SetWidth(30); b:SetHeight(20)
-    b:SetPoint("TOPLEFT", x, y)
-    b:SetText(zone)
-
-    b.mark = page:CreateTexture(nil, "BACKGROUND")
-    b.mark:SetTexture(1, 0.82, 0, 0.9)
-    b.mark:SetPoint("TOPLEFT", b, "TOPLEFT", -2, 2)
-    b.mark:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 2, -2)
-    b.mark:Hide()
-
-    b:SetScript("OnClick", function()
-        local cfg = ns.GetDB().groups[grp.key]
-        cfg.zone = zone
-        cfg.align = AutoAlign(zone, cfg.dir)
-        ns.ApplyGroup()
-        ns.StartTest()
-        UpdatePositionControls()
-    end)
-    b:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(ZONE_NAMES[zone])
-        GameTooltip:Show()
-    end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    return b
 end
 
 local function BuildPositionPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Elige un punto de la pantalla. Con Mover barras puedes ajustarlas a mano.")
+    help:SetText("Pulsa Mover barras, arrástralas con el ratón y pulsa Fijar barras.")
 
     moveButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     moveButton:SetWidth(140); moveButton:SetHeight(22)
@@ -345,51 +265,23 @@ local function BuildPositionPage(page)
         UpdatePositionControls()
     end)
 
-    local y = CONTENT_TOP - 56
+    local y = CONTENT_TOP - 60
     for _, grp in ipairs(SIZE_GROUPS) do
         local label = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        label:SetPoint("TOPLEFT", PAD, y)
+        label:SetPoint("TOPLEFT", PAD, y - 6)
         label:SetText(grp.label)
 
-        -- Cuadricula 3x3
-        local zones = {}
-        for row, cols in ipairs(ZONE_GRID) do
-            for col, zone in ipairs(cols) do
-                zones[zone] = CreateZoneButton(page, grp, zone, PAD + (col - 1) * 33, y - 18 - (row - 1) * 23)
-            end
-        end
-
         local check = CreateFrame("CheckButton", "WarriorReadyVertical_" .. grp.key, page, "UICheckButtonTemplate")
-        check:SetWidth(24); check:SetHeight(24)
-        check:SetPoint("TOPLEFT", PAD + 120, y - 16)
+        check:SetPoint("TOPLEFT", PAD + 140, y)
         _G[check:GetName() .. "Text"]:SetText("Vertical")
         check:SetScript("OnClick", function(self)
-            local cfg = ns.GetDB().groups[grp.key]
-            cfg.dir = self:GetChecked() and "V" or "H"
-            if cfg.zone then cfg.align = AutoAlign(cfg.zone, cfg.dir) end
+            ns.GetDB().groups[grp.key].dir = self:GetChecked() and "V" or "H"
             ns.ApplyGroup()
             ns.StartTest()
-            UpdatePositionControls()
         end)
 
-        local s = CreateFrame("Slider", "WarriorReadyAlignSlider_" .. grp.key, page, "OptionsSliderTemplate")
-        s:SetWidth(180)
-        s:SetPoint("TOPLEFT", PAD + 124, y - 62)
-        s:SetMinMaxValues(1, #ALIGNS)
-        s:SetValueStep(1)
-        s:SetScript("OnValueChanged", function(self, value)
-            local i = math.floor(value + 0.5)
-            local cfg = ns.GetDB().groups[grp.key]
-            SetAlignText(self, cfg.dir, i)
-            if self.updating then return end
-            if cfg.align ~= ALIGNS[i] then
-                cfg.align = ALIGNS[i]
-                ns.StartTest()
-            end
-        end)
-
-        positionControls[grp.key] = { check = check, slider = s, zones = zones }
-        y = y - 100
+        positionControls[grp.key] = check
+        y = y - 32
     end
     page.height = -y + 20
 end
@@ -490,9 +382,15 @@ local function CreateWindow()
         ns.SetEnabled(self:GetChecked() and true or false)
     end)
 
+    local reset = CreateFrame("Button", nil, general, "UIPanelButtonTemplate")
+    reset:SetWidth(200); reset:SetHeight(22)
+    reset:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 40)
+    reset:SetText("Restaurar configuración")
+    reset:SetScript("OnClick", function() StaticPopup_Show("WARRIORREADY_RESET") end)
+
     local hint = general:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("BOTTOM", 0, 22)
-    hint:SetText("Arrastra el boton del minimapa para moverlo")
+    hint:SetText("Arrastra el botón del minimapa para moverlo")
 
     -- Pestana Habilidades
     local help = pages.spells:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -503,13 +401,33 @@ local function CreateWindow()
     BuildPositionPage(pages.position)
 
     f:SetScript("OnShow", function()
-        enableCheck:SetChecked(ns.GetDB().enabled)
-        BuildSpellList()
-        UpdateSizeButtons()
-        UpdatePositionControls()
-        ns.SelectTab(ns.GetDB().optionsTab or "general")
+        local ok, err = pcall(RefreshWindow)
+        if not ok then ns.LogError("ventana de opciones: " .. tostring(err)) end
     end)
 end
+
+-- Al abrir la ventana: refresca todo y empieza siempre en General
+function RefreshWindow()
+    enableCheck:SetChecked(ns.GetDB().enabled)
+    BuildSpellList()
+    UpdateSizeButtons()
+    UpdatePositionControls()
+    ns.SelectTab("general")
+end
+
+StaticPopupDialogs["WARRIORREADY_RESET"] = {
+    text = "¿Restaurar toda la configuración de WarriorReady a los valores originales?",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function()
+        ns.ResetDefaults()
+        UpdateMinimapPosition()
+        if window:IsShown() then RefreshWindow() end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
 
 function ns.SelectTab(key)
     if not pages[key] then key = "general" end
@@ -533,7 +451,7 @@ end
 -- Boton del minimapa
 ---------------------------------------------------------------------------
 
-local function UpdateMinimapPosition()
+function UpdateMinimapPosition()
     local angle = math.rad(ns.GetDB().minimap.angle)
     minimapButton:ClearAllPoints()
     minimapButton:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * MINIMAP_RADIUS, math.sin(angle) * MINIMAP_RADIUS)
