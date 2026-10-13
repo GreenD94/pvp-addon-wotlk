@@ -87,6 +87,8 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - **Botón de minimapa** con ventana para activar/desactivar.
 - **Procs:** se muestran en el aviso grande mientras dura el buff (con destello al activarse). La lista está en `ns.procs`, en `Spells.lua`.
 - **Ventana de opciones, parte 1:** iconos de las habilidades conocidas y de los procs (Ofensivas, Defensivas, Procs). Un clic activa o desactiva cada uno; los desactivados se ven en gris. El tooltip muestra la descripción del hechizo.
+- **Pestañas** en la ventana: General (activar/desactivar) y Habilidades (iconos).
+- **Raciales** añadidas a la barra defensiva (Furia sangrienta, Rabiar, Pisotón de guerra, Voluntad de los Renegados, Cada hombre por sí mismo, Forma de piedra, Artista del escape, Ofrenda de los naaru, Fusión de las sombras).
 
 ## Pendiente
 

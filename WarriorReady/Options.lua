@@ -5,9 +5,16 @@ local MINIMAP_RADIUS = 80
 
 local ICON_SIZE, ICON_GAP, COLS = 32, 4, 10
 local PAD = 24
-local LIST_TOP = -92  -- debajo de la casilla y el texto de ayuda
+local LIST_TOP = -92  -- debajo de las pestanas y el texto de ayuda
+local CONTENT_TOP = -72  -- inicio del contenido de cada pestana
 
 local window, enableCheck, minimapButton
+local pages, tabs = {}, {}
+
+local TAB_DEFS = {
+    { key = "general", label = "General" },
+    { key = "spells",  label = "Habilidades" },
+}
 local iconPool, headers = {}, {}
 
 ---------------------------------------------------------------------------
@@ -34,7 +41,7 @@ end
 
 local function GetIconButton(i)
     if iconPool[i] then return iconPool[i] end
-    local b = CreateFrame("Button", nil, window)
+    local b = CreateFrame("Button", nil, pages.spells)
     b:SetWidth(ICON_SIZE); b:SetHeight(ICON_SIZE)
 
     b.icon = b:CreateTexture(nil, "ARTWORK")
@@ -61,7 +68,7 @@ end
 
 local function GetHeader(i)
     if not headers[i] then
-        headers[i] = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        headers[i] = pages.spells:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     end
     return headers[i]
 end
@@ -103,7 +110,7 @@ local function BuildSpellList()
     end
     for i = n + 1, #iconPool do iconPool[i]:Hide() end
 
-    window:SetHeight(-y + 40)
+    pages.spells.height = -y + 40
 end
 
 ---------------------------------------------------------------------------
@@ -142,27 +149,60 @@ local function CreateWindow()
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
 
-    enableCheck = CreateFrame("CheckButton", "WarriorReadyOptionsEnable", f, "UICheckButtonTemplate")
-    enableCheck:SetPoint("TOPLEFT", 24, -40)
+    window = f
+
+    -- Pestanas
+    for i, def in ipairs(TAB_DEFS) do
+        local page = CreateFrame("Frame", nil, f)
+        page:SetAllPoints()
+        page:Hide()
+        pages[def.key] = page
+
+        local t = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        t:SetWidth(110); t:SetHeight(22)
+        t:SetPoint("TOPLEFT", PAD + (i - 1) * 114, -32)
+        t:SetText(def.label)
+        t:SetScript("OnClick", function() ns.SelectTab(def.key) end)
+        t.key = def.key
+        tabs[i] = t
+    end
+
+    -- Pestana General
+    local general = pages.general
+    general.height = 150
+    enableCheck = CreateFrame("CheckButton", "WarriorReadyOptionsEnable", general, "UICheckButtonTemplate")
+    enableCheck:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
     _G[enableCheck:GetName() .. "Text"]:SetText("Activar WarriorReady")
     enableCheck:SetScript("OnClick", function(self)
         ns.SetEnabled(self:GetChecked() and true or false)
     end)
 
-    local help = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    help:SetPoint("TOPLEFT", PAD, -72)
-    help:SetText("Clic en un icono para activarlo o desactivarlo.")
-
-    local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local hint = general:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("BOTTOM", 0, 22)
     hint:SetText("Arrastra el boton del minimapa para moverlo")
 
-    window = f
+    -- Pestana Habilidades
+    local help = pages.spells:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
+    help:SetText("Clic en un icono para activarlo o desactivarlo.")
 
     f:SetScript("OnShow", function()
         enableCheck:SetChecked(ns.GetDB().enabled)
         BuildSpellList()
+        ns.SelectTab(ns.GetDB().optionsTab or "general")
     end)
+end
+
+function ns.SelectTab(key)
+    if not pages[key] then key = "general" end
+    ns.GetDB().optionsTab = key
+    for _, t in ipairs(tabs) do
+        if t.key == key then t:LockHighlight() else t:UnlockHighlight() end
+    end
+    for k, page in pairs(pages) do
+        if k == key then page:Show() else page:Hide() end
+    end
+    window:SetHeight(pages[key].height)
 end
 
 function ns.ToggleOptions()
