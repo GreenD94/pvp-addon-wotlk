@@ -49,7 +49,11 @@ local function UpdateIcon(b)
     local off = db.disabled[b.id]
     b.icon:SetDesaturated(off and true or false)
     b.icon:SetAlpha(off and 0.35 or 1)
-    if b.canFav and db.favorites[b.id] then b.star:Show() else b.star:Hide() end
+    if b.canFav and db.favorites[b.id] then
+        b.star:Show(); b.favBorder:Show()
+    else
+        b.star:Hide(); b.favBorder:Hide()
+    end
 end
 
 local function ShowSpellTooltip(b)
@@ -118,12 +122,17 @@ local function GetIconButton(i)
     hl:SetBlendMode("ADD")
     hl:SetAllPoints()
 
-    -- Estrella de favorita en la esquina superior derecha
+    -- Favorita: marco dorado alrededor + estrella (icono de banda) en la esquina
+    b.favBorder = b:CreateTexture(nil, "BACKGROUND")
+    b.favBorder:SetTexture(1, 0.82, 0, 1)
+    b.favBorder:SetPoint("TOPLEFT", -3, 3)
+    b.favBorder:SetPoint("BOTTOMRIGHT", 3, -3)
+    b.favBorder:Hide()
+
     b.star = b:CreateTexture(nil, "OVERLAY")
-    b.star:SetTexture("Interface\\Common\\ReputationStar")
-    b.star:SetTexCoord(0, 0.5, 0, 0.5)
+    b.star:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
     b.star:SetWidth(16); b.star:SetHeight(16)
-    b.star:SetPoint("TOPRIGHT", 4, 4)
+    b.star:SetPoint("TOPRIGHT", 5, 5)
     b.star:Hide()
 
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
