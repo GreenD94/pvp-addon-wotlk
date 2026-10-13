@@ -387,15 +387,7 @@ end
 local function BuildAlertsPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Por ahora solo se ve en la demostración, con datos inventados.")
-
-    local demo = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    demo:SetWidth(160); demo:SetHeight(22)
-    demo:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 20)
-    demo:SetText("Ver demostración")
-    demo:SetScript("OnClick", function(self)
-        self:SetText(ns.ToggleDemo() and "Ocultar demostración" or "Ver demostración")
-    end)
+    help:SetText("Aliados: ya funciona en grupo, banda y campo de batalla.\nEnemigos: próximamente.")
 
     local lowest = 0
     for col, sec in ipairs(ALERT_SECTIONS) do

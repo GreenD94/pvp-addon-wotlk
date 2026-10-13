@@ -44,7 +44,7 @@ local testMode = false
 local quietUntil = 0
 
 local TEST_TIME = 5        -- el modo prueba se apaga solo tras estos segundos
-local LOG_MAX = 300        -- lineas guardadas en PvPKitDB.log
+local LOG_MAX = 500        -- lineas guardadas en PvPKitDB.log
 
 local testUntil = 0
 
@@ -52,17 +52,17 @@ local function Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cffc79c6ePvP Kit|r: " .. msg)
 end
 
--- Registro que se guarda en SavedVariables al hacer /reload o salir
-local function Log(msg, force)
-    if not root or not (root.debug or force) then return end
+-- Registro siempre activo (ultimas LOG_MAX lineas); se guarda en SavedVariables al hacer /reload o salir
+local function Log(msg)
+    if not root then return end
     local log = root.log
     log[#log + 1] = string.format("%.2f %s", GetTime(), msg)
     if #log > LOG_MAX then table.remove(log, 1) end
 end
+ns.Log = Log
 
--- Los errores se guardan aunque /pvpkit debug este apagado
 local function LogError(msg)
-    Log("ERROR " .. tostring(msg), true)
+    Log("ERROR " .. tostring(msg))
     Print("|cffff4040error:|r " .. tostring(msg))
 end
 ns.LogError = LogError
@@ -421,7 +421,6 @@ local function Help()
     Print("  /pvpkit combat  - solo en combate on/off (actual: " .. (db.onlyCombat and "on" or "off") .. ")")
     Print("  /pvpkit list  - lista de habilidades con su numero")
     Print("  /pvpkit toggle <n>  - activar/desactivar una habilidad")
-    Print("  /pvpkit debug  - registro on/off para diagnosticar")
     Print("  /pvpkit reset  - volver a la configuracion por defecto")
 end
 
@@ -446,10 +445,6 @@ SlashCmdList.PVPKIT = function(msg)
     elseif cmd == "test" then
         testMode = true; testUntil = GetTime() + TEST_TIME
         Print("modo prueba durante " .. TEST_TIME .. " segundos.")
-    elseif cmd == "debug" then
-        root.debug = not root.debug
-        if root.debug then wipe(root.log); ScanSpellbook() end
-        Print("registro " .. (root.debug and "activado (se guarda al hacer /reload)" or "desactivado"))
     elseif cmd == "size" or cmd == "max" then
         local g, v = GROUP_ALIAS[a or ""], tonumber(b or "")
         if not g or not v then Print("uso: /pvpkit " .. cmd .. " aviso|ofensivas|defensivas <numero>") return end
@@ -648,6 +643,10 @@ driver:SetScript("OnEvent", function(self, event)
         if ns.InitOptions then  -- falta si el juego no se reinicio tras anadir Options.lua
             local ok, err = pcall(ns.InitOptions)
             if not ok then ns.LogError("opciones: " .. tostring(err)) end
+        end
+        do
+            local ok, err = pcall(ns.InitAlerts)
+            if not ok then ns.LogError("alertas: " .. tostring(err)) end
         end
         Print("cargado. Boton en el minimapa o /pvpkit para ver los comandos.")
     elseif event == "UPDATE_SHAPESHIFT_FORM" then

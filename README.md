@@ -49,21 +49,19 @@ En la pantalla de personajes, en **AddOns**, marca "Cargar addons desactualizado
 | `/pvpkit combat` | Ver solo en combate / siempre |
 | `/pvpkit list` | Lista de habilidades numerada (blanco = conocida) |
 | `/pvpkit toggle <n>` | Activar/desactivar una habilidad |
-| `/pvpkit debug` | Registro de diagnóstico on/off |
 | `/pvpkit reset` | Configuración por defecto |
 
 Se usa `/pvpkit` para no chocar con `/wa` de WeakAuras.
 
 ## Diagnóstico
 
-WoW 3.3.5 no guarda los errores de Lua en un archivo. El addon guarda su propio registro:
+WoW 3.3.5 no guarda los errores de Lua en un archivo. El addon guarda su propio registro, siempre activo (últimas 500 líneas):
 
-1. `/pvpkit debug` para activarlo.
-2. Jugar un rato.
-3. `/reload` (o salir del juego) para que se escriba en disco.
-4. Leer `WTF\Account\<CUENTA>\SavedVariables\PvPKit.lua`, en la sección `log`.
+1. Jugar un rato.
+2. `/reload` (o salir del juego) para que se escriba en disco.
+3. Leer `WTF\Account\<CUENTA>\SavedVariables\PvPKit.lua`, en la sección `log`.
 
-Cada línea anota cuándo una habilidad cambia de estado y lo que dice el juego en ese momento (ira, cooldown, combate). Los errores del addon también se guardan ahí y se muestran en el chat.
+Cada línea anota cuándo una habilidad cambia de estado y lo que dice el juego en ese momento (ira, cooldown, combate), y cada alerta nueva de aliados. Los errores del addon también se guardan ahí y se muestran en el chat.
 
 Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 
@@ -99,7 +97,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - **Barra de favoritas:** en Habilidades, clic derecho en un icono lo marca con una estrella y lo mueve a una cuarta barra (Favoritas) en vez de la suya. Tiene su propio tamaño, posición y opción vertical. Los procs no pueden ser favoritos (van al aviso grande).
 - **Perfiles (máximo 5):** abajo en la barra lateral se ve el perfil activo y el botón Cambiar perfil. Al pulsarlo se ocultan las pestañas y aparecen Volver y los perfiles como pestañas para cambiar; a la derecha están los botones para crear (Nuevo, con la configuración original), copiar el actual, borrar y cambiar de perfil. Cada personaje recuerda su perfil. Restaurar configuración afecta solo al perfil activo. La configuración anterior pasa sola al perfil "Default".
 - **v0.2 - PvP Kit:** el addon pasa a llamarse PvP Kit (carpeta `PvPKit`, comando `/pvpkit` o `/pvk`). Detección de clase con un archivo por clase; se añadió el **chamán** (Estallido de lava, Golpe de tormenta, choques, Corte de viento, Totem de derribo, Maleficio, Ira chamanística, Mareas vivas, etc. y procs de Arma vorágine a 5 cargas y Oleadas). El botón del minimapa muestra el emblema de la clase detectada y su nombre (en su color) en el tooltip. La configuración se migró de WarriorReady.
-- Los errores de la ventana de opciones se guardan en el registro aunque `/pvpkit debug` esté apagado.
+- Los errores de la ventana de opciones se guardan en el registro. (Más tarde se quitó el comando `/pvpkit debug`: el registro está siempre activo.)
 - **Raciales** añadidas a la barra defensiva (Furia sangrienta, Rabiar, Pisotón de guerra, Voluntad de los Renegados, Cada hombre por sí mismo, Forma de piedra, Artista del escape, Ofrenda de los naaru, Fusión de las sombras).
 
 ## Pendiente
@@ -126,9 +124,9 @@ Vista elegida: **opción A**, iconos grandes en el centro con el nombre del juga
 
 Para probar sin equipo de arena: campos de batalla (controles, perjuicios y vida baja), duelos con un amigo (enemigos) y grupo con un amigo (aliados). El registro guarda lo que pasa.
 
-- [x] Modo demostración (`/pvpkit demo` o botón "Ver demostración") y pestaña Alertas con casillas por sección y umbral de vida baja (solo visual). Fila Aliados y fila Enemigos en el centro-arriba; borde de color según el tipo (morado control, rojo perjuicio/vida, dorado inmune, gris abalorio, azul lanzando), barra que se vacía con la duración (sin números), DR en la esquina y "¡AHORA!" latiendo.
+- [x] Modo demostración (`/pvpkit demo`; el botón de la pestaña se quitó) y pestaña Alertas con casillas por sección y umbral de vida baja (solo visual). Fila Aliados y fila Enemigos en el centro-arriba; borde de color según el tipo (morado control, rojo perjuicio/vida, dorado inmune, gris abalorio, azul lanzando), barra que se vacía con la duración (sin números), DR en la esquina y "¡AHORA!" latiendo.
 - [x] Cada alerta muestra la **cara** del jugador (si el juego la tiene: arena, grupo, objetivo, foco) junto al icono del efecto, con el emblema de la clase en la esquina; si no hay cara, el emblema de la clase ocupa su lugar. Tamaño de alertas XS/S/M/L en la pestaña Tamaños (vista previa con la demostración).
-- [ ] **Aliados:** control (CC) mientras dure, perjuicios importantes, vida baja (umbral configurable).
+- [x] **Aliados (datos reales):** control (CC) mientras dure con quién lo puso, perjuicios importantes (reducción de curación, Aflicción inestable) y vida baja (umbral configurable), en grupo, banda o campo de batalla. Unos 65 controles de todas las clases, comparados por nombre (sirve cualquier rango). Máximo 6 alertas, ordenadas: control, vida baja, perjuicio. Por probar en el juego.
 - [ ] **Aliados:** "lo están enfocando". Solo es fiable en arena: el juego solo da el objetivo de los enemigos de arena o del objetivo/foco.
 - [ ] **Enemigos:** control (CC) con quién lo puso y cuánto le queda; perjuicios; vida baja (para rematar); hechizo que está lanzando.
 - [ ] **Rendimientos decrecientes (DR)** por tipo de control sobre cada enemigo, para encadenar controles con el equipo. Ejemplo: el chamán aturde y tú lanzas tu aturdimiento justo al acabar, sabiendo si durará entero, la mitad o nada. Necesita la lista de controles de todas las clases.
