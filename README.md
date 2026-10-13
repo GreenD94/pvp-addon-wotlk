@@ -89,6 +89,8 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - **Ventana de opciones, parte 1:** iconos de las habilidades conocidas y de los procs (Ofensivas, Defensivas, Procs). Un clic activa o desactiva cada uno; los desactivados se ven en gris. El tooltip muestra la descripción del hechizo.
 - **Pestañas** en la ventana: General (activar/desactivar) y Habilidades (iconos).
 - **Seleccionar/Deseleccionar todos** por sección (Ofensivas, Defensivas, Procs). El texto cambia según haya al menos una activa o ninguna.
+- **Pestañas verticales** a la izquierda: General, Habilidades, Tamaños.
+- **Tamaños:** Grande (80), Mediano (60), Pequeño (44) y Extra pequeño (32) para el aviso grande y cada barra. Se aplica al momento con vista previa de 5 s.
 - **Raciales** añadidas a la barra defensiva (Furia sangrienta, Rabiar, Pisotón de guerra, Voluntad de los Renegados, Cada hombre por sí mismo, Forma de piedra, Artista del escape, Ofrenda de los naaru, Fusión de las sombras).
 
 ## Pendiente
@@ -100,7 +102,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - [x] Botón en el minimapa que abre una ventana para activar/desactivar el addon.
 - [x] Mostrar los procs en el aviso grande mientras están activos (Espada y escudo, Oleada sangrienta, Muerte súbita, Sabor de sangre, Glifo de Revancha, Gigante).
 - [ ] Ventana de opciones con iconos y sin comandos:
-  - tamaño de las barras: grande, mediano, pequeño, extra pequeño;
+  - [x] tamaño de las barras: grande, mediano, pequeño, extra pequeño;
   - posición de las barras;
   - dirección horizontal o vertical;
   - alineación: izquierda, derecha, arriba, abajo, centro y las cuatro esquinas;

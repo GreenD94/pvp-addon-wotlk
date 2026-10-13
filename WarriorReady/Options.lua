@@ -5,8 +5,9 @@ local MINIMAP_RADIUS = 80
 
 local ICON_SIZE, ICON_GAP, COLS = 32, 4, 10
 local PAD = 24
-local LIST_TOP = -92  -- debajo de las pestanas y el texto de ayuda
-local CONTENT_TOP = -72  -- inicio del contenido de cada pestana
+local SIDEBAR_W = 130    -- ancho de la columna de pestanas verticales
+local CONTENT_TOP = -40  -- inicio del contenido de cada pestana
+local LIST_TOP = -60     -- debajo del texto de ayuda de Habilidades
 
 local window, enableCheck, minimapButton
 local pages, tabs = {}, {}
@@ -14,7 +15,22 @@ local pages, tabs = {}, {}
 local TAB_DEFS = {
     { key = "general", label = "General" },
     { key = "spells",  label = "Habilidades" },
+    { key = "sizes",   label = "Tamaños" },
 }
+
+local SIZE_PRESETS = {
+    { label = "Grande",        size = 80 },
+    { label = "Mediano",       size = 60 },
+    { label = "Pequeño",       size = 44 },
+    { label = "Extra pequeño", size = 32 },
+}
+
+local SIZE_GROUPS = {
+    { key = "main", label = "Aviso grande" },
+    { key = "cd",   label = "Barra ofensiva" },
+    { key = "def",  label = "Barra defensiva" },
+}
+local sizeButtons = {}  -- [grupo] = { boton, ... }
 local iconPool, headers, sectionButtons = {}, {}, {}
 local UpdateSectionButton
 
@@ -156,12 +172,82 @@ local function BuildSpellList()
 end
 
 ---------------------------------------------------------------------------
+-- Pestana Tamanos
+---------------------------------------------------------------------------
+
+local function UpdateSizeButtons()
+    local groups = ns.GetDB().groups
+    for g, list in pairs(sizeButtons) do
+        for _, b in ipairs(list) do
+            if groups[g].size == b.size then b:LockHighlight() else b:UnlockHighlight() end
+        end
+    end
+end
+
+local function BuildSizesPage(page)
+    local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
+    help:SetText("Al elegir un tamaño se muestra una vista previa durante 5 segundos.")
+
+    local y = CONTENT_TOP - 26
+    for _, grp in ipairs(SIZE_GROUPS) do
+        local label = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        label:SetPoint("TOPLEFT", PAD, y)
+        label:SetText(grp.label)
+        y = y - 20
+
+        sizeButtons[grp.key] = {}
+        for i, preset in ipairs(SIZE_PRESETS) do
+            local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+            b:SetWidth(96); b:SetHeight(22)
+            b:SetPoint("TOPLEFT", PAD + (i - 1) * 100, y)
+            b:SetText(preset.label)
+            b.size = preset.size
+            b:SetScript("OnClick", function()
+                ns.GetDB().groups[grp.key].size = preset.size
+                ns.ApplyGroup(grp.key)
+                ns.StartTest()
+                UpdateSizeButtons()
+            end)
+            sizeButtons[grp.key][i] = b
+        end
+        y = y - 36
+    end
+    page.height = -y + 20
+end
+
+---------------------------------------------------------------------------
 -- Ventana de opciones
 ---------------------------------------------------------------------------
 
+local function CreateTab(sidebar, i, def)
+    local t = CreateFrame("Button", nil, sidebar)
+    t:SetWidth(SIDEBAR_W - 22); t:SetHeight(22)
+    t:SetPoint("TOPLEFT", 6, -8 - (i - 1) * 24)
+
+    t.sel = t:CreateTexture(nil, "BACKGROUND")
+    t.sel:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+    t.sel:SetBlendMode("ADD")
+    t.sel:SetAllPoints()
+    t.sel:Hide()
+
+    local hl = t:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+    hl:SetBlendMode("ADD")
+    hl:SetAllPoints()
+
+    t.text = t:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    t.text:SetPoint("LEFT", 8, 0)
+    t.text:SetText(def.label)
+
+    t.key = def.key
+    t:SetScript("OnClick", function() ns.SelectTab(def.key) end)
+    return t
+end
+
 local function CreateWindow()
     local f = CreateFrame("Frame", "WarriorReadyOptions", UIParent)
-    f:SetWidth(PAD * 2 + COLS * (ICON_SIZE + ICON_GAP) - ICON_GAP); f:SetHeight(130)
+    f:SetWidth(SIDEBAR_W + PAD * 2 + COLS * (ICON_SIZE + ICON_GAP) - ICON_GAP); f:SetHeight(130)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:SetBackdrop({
@@ -193,20 +279,27 @@ local function CreateWindow()
 
     window = f
 
-    -- Pestanas
+    -- Pestanas verticales a la izquierda
+    local sidebar = CreateFrame("Frame", nil, f)
+    sidebar:SetPoint("TOPLEFT", 16, -32)
+    sidebar:SetPoint("BOTTOMLEFT", 16, 16)
+    sidebar:SetWidth(SIDEBAR_W - 10)
+    sidebar:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 12,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    sidebar:SetBackdropColor(0, 0, 0, 0.4)
+    sidebar:SetBackdropBorderColor(0.6, 0.6, 0.6)
+
     for i, def in ipairs(TAB_DEFS) do
         local page = CreateFrame("Frame", nil, f)
-        page:SetAllPoints()
+        page:SetPoint("TOPLEFT", SIDEBAR_W, 0)
+        page:SetPoint("BOTTOMRIGHT")
         page:Hide()
         pages[def.key] = page
-
-        local t = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-        t:SetWidth(110); t:SetHeight(22)
-        t:SetPoint("TOPLEFT", PAD + (i - 1) * 114, -32)
-        t:SetText(def.label)
-        t:SetScript("OnClick", function() ns.SelectTab(def.key) end)
-        t.key = def.key
-        tabs[i] = t
+        tabs[i] = CreateTab(sidebar, i, def)
     end
 
     -- Pestana General
@@ -228,9 +321,12 @@ local function CreateWindow()
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
     help:SetText("Clic en un icono para activarlo o desactivarlo.")
 
+    BuildSizesPage(pages.sizes)
+
     f:SetScript("OnShow", function()
         enableCheck:SetChecked(ns.GetDB().enabled)
         BuildSpellList()
+        UpdateSizeButtons()
         ns.SelectTab(ns.GetDB().optionsTab or "general")
     end)
 end
@@ -239,12 +335,14 @@ function ns.SelectTab(key)
     if not pages[key] then key = "general" end
     ns.GetDB().optionsTab = key
     for _, t in ipairs(tabs) do
-        if t.key == key then t:LockHighlight() else t:UnlockHighlight() end
+        local selected = t.key == key
+        if selected then t.sel:Show() else t.sel:Hide() end
+        t.text:SetFontObject(selected and GameFontHighlight or GameFontNormal)
     end
     for k, page in pairs(pages) do
         if k == key then page:Show() else page:Hide() end
     end
-    window:SetHeight(pages[key].height)
+    window:SetHeight(math.max(pages[key].height, #TAB_DEFS * 24 + 60))
 end
 
 function ns.ToggleOptions()

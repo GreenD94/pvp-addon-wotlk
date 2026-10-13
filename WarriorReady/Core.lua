@@ -332,6 +332,7 @@ local function Render()
                 SetButton(GetButton(bar, counts[bar]), s, state)
             end
             local age = s.popT and now - s.popT
+            if testMode then age = FLASH_TIME end  -- vista previa: aviso grande fijo
             if age and age < db.popTime and counts.main < db.groups.main.max then
                 counts.main = counts.main + 1
                 local b = GetButton("main", counts.main)
@@ -448,6 +449,13 @@ end
 -- API para Options.lua
 function ns.GetDB() return db end
 function ns.GetKnown() return known end
+ns.ApplyGroup = function(g) ApplyAnchor(g) end
+
+-- Vista previa: muestra todo durante TEST_TIME segundos
+function ns.StartTest()
+    testMode = true
+    testUntil = GetTime() + TEST_TIME
+end
 
 function ns.SetEnabled(on)
     db.enabled = on
