@@ -553,9 +553,11 @@ function ns.SetProfile(name)
 end
 
 -- Crea un perfil nuevo (vacio o copia del actual) y lo activa. Devuelve false si el nombre no vale.
+ns.MAX_PROFILES = 5
+
 function ns.NewProfile(name, copyCurrent)
     name = strtrim(name or "")
-    if name == "" or root.profiles[name] then return false end
+    if name == "" or root.profiles[name] or #ns.GetProfiles() >= ns.MAX_PROFILES then return false end
     root.profiles[name] = copyCurrent and DeepCopy(db) or { version = 4 }
     ns.SetProfile(name)
     return true

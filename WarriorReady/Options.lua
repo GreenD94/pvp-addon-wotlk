@@ -19,7 +19,8 @@ local TAB_DEFS = {
     { key = "position", label = "Posición" },
 }
 
-local profileButtons, currentProfileLabel, deleteProfileButton = {}, nil, nil
+local profileTabs, createProfileButtons = {}, {}  -- pestanas de perfil y botones Nuevo/Copiar
+local currentProfileLabel, deleteProfileButton, countLabel
 -- Modo perfiles: las pestanas se ocultan y la barra lateral muestra "Volver"
 local changeProfileButton, sidebarProfileLabel, backButton
 local lastTab = "general"
@@ -335,51 +336,35 @@ local function AfterProfileChange()
     RefreshWindow("profiles")
 end
 
+-- Los perfiles se muestran como pestanas en la barra lateral, debajo de Volver
 local function BuildProfileList()
-    local page = pages.profiles
     local current = ns.GetCurrentProfile()
     local names = ns.GetProfiles()
     currentProfileLabel:SetText("Perfil activo: |cffffffff" .. current .. "|r")
 
-    local y = CONTENT_TOP - 112
-    for i, name in ipairs(names) do
-        local b = profileButtons[i]
-        if not b then
-            b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-            b:SetWidth(220); b:SetHeight(22)
-            b.mark = page:CreateTexture(nil, "BACKGROUND")
-            b.mark:SetTexture(1, 0.82, 0, 0.9)
-            b.mark:SetPoint("TOPLEFT", b, "TOPLEFT", -3, 3)
-            b.mark:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 3, -3)
-            b:SetScript("OnClick", function(self)
-                ns.SetProfile(self.name)
-                AfterProfileChange()
-            end)
-            profileButtons[i] = b
+    for i, t in ipairs(profileTabs) do
+        local name = names[i]
+        t.profileName = name
+        if name then
+            t.text:SetText(name)
+            local selected = name == current
+            if selected then t.sel:Show() else t.sel:Hide() end
+            t.text:SetFontObject(selected and GameFontHighlight or GameFontNormal)
         end
-        b.name = name
-        b:SetText(name)
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", PAD, y)
-        local selected = name == current
-        if selected then b.mark:Show() else b.mark:Hide() end
-        b:GetFontString():SetTextColor(selected and 1 or 0.7, selected and 1 or 0.7, selected and 1 or 0.7)
-        b:Show()
-        y = y - 28
-    end
-    for i = #names + 1, #profileButtons do
-        profileButtons[i]:Hide()
-        profileButtons[i].mark:Hide()
     end
 
+    local full = #names >= ns.MAX_PROFILES
+    for _, b in ipairs(createProfileButtons) do
+        if full then b:Disable() else b:Enable() end
+    end
     if #names > 1 then deleteProfileButton:Enable() else deleteProfileButton:Disable() end
-    page.height = -y + 30
+    countLabel:SetText(#names .. " de " .. ns.MAX_PROFILES .. " perfiles")
 end
 
 local function BuildProfilesPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Elige un perfil o crea uno. Cada personaje recuerda qué perfil usa.")
+    help:SetText("Elige un perfil a la izquierda. Cada personaje recuerda qué perfil usa.")
 
     currentProfileLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     currentProfileLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 22)
@@ -397,12 +382,17 @@ local function BuildProfilesPage(page)
         b:SetScript("OnClick", function()
             StaticPopup_Show(act.popup, ns.GetCurrentProfile())
         end)
-        if act.label == "Borrar" then deleteProfileButton = b end
+        if act.label == "Borrar" then
+            deleteProfileButton = b
+        else
+            createProfileButtons[#createProfileButtons + 1] = b
+        end
     end
 
-    local listLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    listLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 88)
-    listLabel:SetText("Perfiles guardados (clic para cambiar):")
+    countLabel = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    countLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 80)
+
+    page.height = 150
 end
 
 -- Ventanas emergentes con caja de texto para el nombre del perfil
@@ -412,7 +402,7 @@ local function NameDialog(text, copyCurrent)
         if ns.NewProfile(name, copyCurrent) then
             AfterProfileChange()
         else
-            UIErrorsFrame:AddMessage("Nombre vacío o ya existe.", 1, 0.2, 0.2)
+            UIErrorsFrame:AddMessage("Nombre vacío, repetido o ya hay 5 perfiles.", 1, 0.2, 0.2)
         end
     end
     return {
@@ -562,6 +552,20 @@ local function CreateWindow()
     backButton:SetScript("OnClick", function() ns.SelectTab(lastTab) end)
     backButton:Hide()
 
+    for i = 1, ns.MAX_PROFILES do
+        local t = CreateTab(sidebar, i, { key = "profile" .. i, label = "" })
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", 6, -40 - (i - 1) * 24)
+        t:SetScript("OnClick", function(self)
+            if self.profileName then
+                ns.SetProfile(self.profileName)
+                AfterProfileChange()
+            end
+        end)
+        t:Hide()
+        profileTabs[i] = t
+    end
+
     -- Pestana General
     local general = pages.general
     general.height = 150
@@ -638,12 +642,16 @@ function ns.SelectTab(key)
     else
         backButton:Hide(); changeProfileButton:Show(); sidebarProfileLabel:Show()
     end
+    for _, t in ipairs(profileTabs) do
+        if profileMode and t.profileName then t:Show() else t:Hide() end
+    end
 
     for k, page in pairs(pages) do
         if k == key then page:Show() else page:Hide() end
     end
-    -- alto minimo: pestanas arriba + perfil y boton abajo en la barra lateral
-    window:SetHeight(math.max(pages[key].height, #TAB_DEFS * 24 + 110))
+    -- alto minimo: lo que ocupa la barra lateral en cada modo
+    local sidebarHeight = profileMode and (40 + ns.MAX_PROFILES * 24 + 40) or (#TAB_DEFS * 24 + 110)
+    window:SetHeight(math.max(pages[key].height, sidebarHeight))
 end
 
 function ns.ToggleOptions()
