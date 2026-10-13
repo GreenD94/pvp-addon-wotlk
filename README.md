@@ -86,6 +86,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - **Clasificación:** ofensiva = hace daño (más Cargar, Interceptar e Intervenir); defensiva = no hace daño.
 - **Botón de minimapa** con ventana para activar/desactivar.
 - **Procs:** se muestran en el aviso grande mientras dura el buff (con destello al activarse). La lista está en `ns.procs`, en `Spells.lua`.
+- **Ventana de opciones, parte 1:** iconos de las habilidades conocidas y de los procs (Ofensivas, Defensivas, Procs). Un clic activa o desactiva cada uno; los desactivados se ven en gris. El tooltip muestra la descripción del hechizo.
 
 ## Pendiente
 
@@ -100,7 +101,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
   - posición de las barras;
   - dirección horizontal o vertical;
   - alineación: izquierda, derecha, arriba, abajo, centro y las cuatro esquinas;
-  - elegir qué habilidades rastrear.
+  - [x] elegir qué habilidades rastrear.
 - [ ] Tercera barra de habilidades favoritas.
 - [ ] Perfiles de configuración guardados.
 - [ ] Soporte para más clases, con elección de clase y detección automática.

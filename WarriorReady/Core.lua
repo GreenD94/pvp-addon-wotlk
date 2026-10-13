@@ -112,7 +112,10 @@ local function ScanSpellbook()
         if s.aura then s.auraName = GetSpellInfo(s.aura) end
         if name and book[name] then known[#known + 1] = s end
     end
-    for _, p in ipairs(ns.procs) do p.name = GetSpellInfo(p.id) end
+    for _, p in ipairs(ns.procs) do
+        local pname, _, picon = GetSpellInfo(p.id)
+        p.name, p.icon = pname, picon
+    end
     local names = {}
     for _, s in ipairs(known) do names[#names + 1] = s.name end
     Log("conocidas: " .. table.concat(names, ", "))
@@ -258,7 +261,7 @@ local counts = { main = 0, cd = 0, def = 0 }
 local function RenderProcs(now, visible)
     for _, p in ipairs(ns.procs) do
         local name, _, icon
-        if p.name then name, _, icon = UnitBuff("player", p.name) end
+        if p.name and not db.disabled[p.id] then name, _, icon = UnitBuff("player", p.name) end
         if name and not p.active then
             p.startT = now
             Log(p.name .. ": proc activo")
@@ -444,6 +447,7 @@ end
 
 -- API para Options.lua
 function ns.GetDB() return db end
+function ns.GetKnown() return known end
 
 function ns.SetEnabled(on)
     db.enabled = on
