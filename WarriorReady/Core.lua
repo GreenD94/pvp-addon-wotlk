@@ -18,18 +18,20 @@ local defaults = {
         main = { size = 80, max = 8,  point = "CENTER", relPoint = "CENTER", x = 0, y = -120, dir = "H", align = "center" },
         cd   = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -200, dir = "H", align = "center" },
         def  = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -252, dir = "H", align = "center" },
+        fav  = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -304, dir = "H", align = "center" },
     },
     disabled = {},  -- [spellID] = true
+    favorites = {}, -- [spellID] = true: va a la barra de favoritas en vez de la suya
     debug = false,
     log = {},
 }
 
-local GROUP_LABEL = { main = "Aviso", cd = "Ofensivas", def = "Defensivas" }
+local GROUP_LABEL = { main = "Aviso", cd = "Ofensivas", def = "Defensivas", fav = "Favoritas" }
 
 local db
 local known = {}
 local anchors = {}
-local buttons = { main = {}, cd = {}, def = {} }
+local buttons = { main = {}, cd = {}, def = {}, fav = {} }
 local testMode = false
 local quietUntil = 0
 
@@ -259,7 +261,7 @@ local function AnimatePop(b, age)
     b:SetAlpha(left < FADE_TIME and left / FADE_TIME or 1)
 end
 
-local counts = { main = 0, cd = 0, def = 0 }
+local counts = { main = 0, cd = 0, def = 0, fav = 0 }
 
 -- Procs: en el aviso grande mientras dure el buff
 local function RenderProcs(now, visible)
@@ -331,7 +333,7 @@ local function Render()
     local preview = testMode or not db.locked  -- mientras se mueven las barras se ve todo
     local visible = db.enabled
         and (testMode or not db.locked or not db.onlyCombat or UnitAffectingCombat("player"))
-    counts.main, counts.cd, counts.def = 0, 0, 0
+    counts.main, counts.cd, counts.def, counts.fav = 0, 0, 0, 0
     RenderProcs(now, visible)
 
     for _, s in ipairs(known) do
@@ -348,7 +350,7 @@ local function Render()
         s.seen, s.lastState = true, state
 
         if visible and state then
-            local bar = s.def and "def" or "cd"
+            local bar = db.favorites[s.id] and "fav" or (s.def and "def" or "cd")
             if counts[bar] < db.groups[bar].max then
                 counts[bar] = counts[bar] + 1
                 SetButton(GetButton(bar, counts[bar]), s, state)
@@ -392,7 +394,7 @@ end
 -- Comandos
 ---------------------------------------------------------------------------
 
-local GROUP_ALIAS = { aviso = "main", ofensivas = "cd", ofe = "cd", defensivas = "def", def = "def" }
+local GROUP_ALIAS = { aviso = "main", ofensivas = "cd", ofe = "cd", defensivas = "def", def = "def", favoritas = "fav", fav = "fav" }
 
 local function Help()
     Print("comandos:")
@@ -464,7 +466,7 @@ SlashCmdList.WARRIORREADY = function(msg)
 end
 
 
-local GROUP_ORDER = { "main", "cd", "def" }
+local GROUP_ORDER = { "main", "cd", "def", "fav" }
 
 local function ApplyAll()
     for _, g in ipairs(GROUP_ORDER) do ApplyAnchor(g) end
@@ -545,6 +547,7 @@ driver:SetScript("OnEvent", function(self, event)
         CreateAnchor("main")
         CreateAnchor("cd")
         CreateAnchor("def")
+        CreateAnchor("fav")
         ApplyAll()
         ApplyLock()
         ScanSpellbook()

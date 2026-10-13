@@ -34,6 +34,7 @@ local SIZE_GROUPS = {
     { key = "main", label = "Aviso grande" },
     { key = "cd",   label = "Barra ofensiva" },
     { key = "def",  label = "Barra defensiva" },
+    { key = "fav",  label = "Barra favoritas" },
 }
 local sizeButtons = {}  -- [grupo] = slider
 local iconPool, headers, sectionButtons = {}, {}, {}
@@ -44,19 +45,29 @@ local UpdateSectionButton
 ---------------------------------------------------------------------------
 
 local function UpdateIcon(b)
-    local off = ns.GetDB().disabled[b.id]
+    local db = ns.GetDB()
+    local off = db.disabled[b.id]
     b.icon:SetDesaturated(off and true or false)
     b.icon:SetAlpha(off and 0.35 or 1)
+    if b.canFav and db.favorites[b.id] then b.star:Show() else b.star:Hide() end
 end
 
 local function ShowSpellTooltip(b)
     GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
     GameTooltip:SetHyperlink("spell:" .. b.id)
     GameTooltip:AddLine(" ")
-    if ns.GetDB().disabled[b.id] then
+    local db = ns.GetDB()
+    if db.disabled[b.id] then
         GameTooltip:AddLine("Desactivada - clic para activar", 1, 0.3, 0.3)
     else
         GameTooltip:AddLine("Activada - clic para desactivar", 0.3, 1, 0.3)
+    end
+    if b.canFav then
+        if db.favorites[b.id] then
+            GameTooltip:AddLine("Favorita - clic derecho para quitarla", 1, 0.82, 0)
+        else
+            GameTooltip:AddLine("Clic derecho: marcar como favorita", 0.7, 0.7, 0.7)
+        end
     end
     GameTooltip:Show()
 end
@@ -107,11 +118,25 @@ local function GetIconButton(i)
     hl:SetBlendMode("ADD")
     hl:SetAllPoints()
 
-    b:SetScript("OnClick", function(self)
+    -- Estrella de favorita en la esquina superior derecha
+    b.star = b:CreateTexture(nil, "OVERLAY")
+    b.star:SetTexture("Interface\\Common\\ReputationStar")
+    b.star:SetTexCoord(0, 0.5, 0, 0.5)
+    b.star:SetWidth(16); b.star:SetHeight(16)
+    b.star:SetPoint("TOPRIGHT", 4, 4)
+    b.star:Hide()
+
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:SetScript("OnClick", function(self, button)
         local db = ns.GetDB()
-        db.disabled[self.id] = not db.disabled[self.id] or nil
+        if button == "RightButton" then
+            if not self.canFav then return end
+            db.favorites[self.id] = not db.favorites[self.id] or nil
+        else
+            db.disabled[self.id] = not db.disabled[self.id] or nil
+            UpdateSectionButton(self.sectionButton)
+        end
         UpdateIcon(self)
-        UpdateSectionButton(self.sectionButton)
         ShowSpellTooltip(self)
     end)
     b:SetScript("OnEnter", ShowSpellTooltip)
@@ -162,6 +187,7 @@ local function BuildSpellList()
             local b = GetIconButton(n)
             b.id = s.id
             b.sectionButton = sb
+            b.canFav = si < 3  -- los procs van siempre al aviso grande
             b.icon:SetTexture(s.icon)
             local col, row = (i - 1) % COLS, math.floor((i - 1) / COLS)
             b:ClearAllPoints()
@@ -395,7 +421,7 @@ local function CreateWindow()
     -- Pestana Habilidades
     local help = pages.spells:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Clic en un icono para activarlo o desactivarlo.")
+    help:SetText("Clic: activar o desactivar.  Clic derecho: favorita (va a su propia barra).")
 
     BuildSizesPage(pages.sizes)
     BuildPositionPage(pages.position)
