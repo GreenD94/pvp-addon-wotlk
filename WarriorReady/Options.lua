@@ -179,7 +179,13 @@ local function UpdateSizeButtons()
     local groups = ns.GetDB().groups
     for g, list in pairs(sizeButtons) do
         for _, b in ipairs(list) do
-            if groups[g].size == b.size then b:LockHighlight() else b:UnlockHighlight() end
+            local selected = groups[g].size == b.size
+            if selected then b.mark:Show() else b.mark:Hide() end
+            if selected then
+                b:GetFontString():SetTextColor(1, 1, 1)
+            else
+                b:GetFontString():SetTextColor(0.5, 0.5, 0.5)
+            end
         end
     end
 end
@@ -202,6 +208,13 @@ local function BuildSizesPage(page)
             b:SetPoint("TOPLEFT", PAD + 130 + (i - 1) * 48, y)
             b:SetText(preset.label)
             b.size = preset.size
+
+            -- Marco dorado detras del boton seleccionado
+            b.mark = page:CreateTexture(nil, "BACKGROUND")
+            b.mark:SetTexture(1, 0.82, 0, 0.9)
+            b.mark:SetPoint("TOPLEFT", b, "TOPLEFT", -3, 3)
+            b.mark:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 3, -3)
+            b.mark:Hide()
             b:SetScript("OnClick", function()
                 ns.GetDB().groups[grp.key].size = preset.size
                 ns.ApplyGroup(grp.key)
