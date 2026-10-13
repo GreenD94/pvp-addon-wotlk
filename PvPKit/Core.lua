@@ -28,7 +28,7 @@ local DEFAULT_PROFILE = "Default"
 
 local GROUP_LABEL = { main = "Aviso", cd = "Ofensivas", def = "Defensivas", fav = "Favoritas" }
 
-local root  -- WarriorReadyDB: perfiles, perfil de cada personaje y registro de diagnostico
+local root  -- PvPKitDB: perfiles, perfil de cada personaje y registro de diagnostico
 local db    -- perfil activo
 local known = {}
 local anchors = {}
@@ -37,12 +37,12 @@ local testMode = false
 local quietUntil = 0
 
 local TEST_TIME = 5        -- el modo prueba se apaga solo tras estos segundos
-local LOG_MAX = 300        -- lineas guardadas en WarriorReadyDB.log
+local LOG_MAX = 300        -- lineas guardadas en PvPKitDB.log
 
 local testUntil = 0
 
 local function Print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cffc79c6eWarriorReady|r: " .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cffc79c6ePvP Kit|r: " .. msg)
 end
 
 -- Registro que se guarda en SavedVariables al hacer /reload o salir
@@ -53,7 +53,7 @@ local function Log(msg, force)
     if #log > LOG_MAX then table.remove(log, 1) end
 end
 
--- Los errores se guardan aunque /wready debug este apagado
+-- Los errores se guardan aunque /pvpkit debug este apagado
 local function LogError(msg)
     Log("ERROR " .. tostring(msg), true)
     Print("|cffff4040error:|r " .. tostring(msg))
@@ -173,7 +173,7 @@ local function ApplyAnchor(g)
 end
 
 local function CreateAnchor(g)
-    local f = CreateFrame("Frame", "WarriorReadyAnchor_" .. g, UIParent)
+    local f = CreateFrame("Frame", "PvPKitAnchor_" .. g, UIParent)
     f:SetMovable(true)
     f:SetClampedToScreen(true)
     f:RegisterForDrag("LeftButton")
@@ -189,7 +189,7 @@ local function CreateAnchor(g)
 
     f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.label:SetPoint("BOTTOM", f, "TOP", 0, 2)
-    f.label:SetText("WarriorReady - " .. GROUP_LABEL[g] .. " (arrastra para mover)")
+    f.label:SetText("PvPKit - " .. GROUP_LABEL[g] .. " (arrastra para mover)")
 
     anchors[g] = f
     ApplyAnchor(g)
@@ -274,8 +274,9 @@ local counts = { main = 0, cd = 0, def = 0, fav = 0 }
 -- Procs: en el aviso grande mientras dure el buff
 local function RenderProcs(now, visible)
     for _, p in ipairs(ns.procs) do
-        local name, _, icon
-        if p.name and not db.disabled[p.id] then name, _, icon = UnitBuff("player", p.name) end
+        local name, _, icon, count
+        if p.name and not db.disabled[p.id] then name, _, icon, count = UnitBuff("player", p.name) end
+        if name and p.minStacks and (count or 0) < p.minStacks then name = nil end
         if name and not p.active then
             p.startT = now
             Log(p.name .. ": proc activo")
@@ -402,18 +403,18 @@ local GROUP_ALIAS = { aviso = "main", ofensivas = "cd", ofe = "cd", defensivas =
 
 local function Help()
     Print("comandos:")
-    Print("  /wready config  - abrir la ventana de opciones")
-    Print("  /wready unlock | lock  - mover el aviso y las barras")
-    Print("  /wready test  - mostrar todas las habilidades conocidas")
-    Print("  /wready size aviso|ofensivas|defensivas <px>  - tamano (actual: " .. db.groups.main.size
+    Print("  /pvpkit config  - abrir la ventana de opciones")
+    Print("  /pvpkit unlock | lock  - mover el aviso y las barras")
+    Print("  /pvpkit test  - mostrar todas las habilidades conocidas")
+    Print("  /pvpkit size aviso|ofensivas|defensivas <px>  - tamano (actual: " .. db.groups.main.size
         .. " / " .. db.groups.cd.size .. " / " .. db.groups.def.size .. ")")
-    Print("  /wready max aviso|ofensivas|defensivas <n>  - maximo de iconos")
-    Print("  /wready pop <seg>  - duracion del aviso grande (actual: " .. db.popTime .. ")")
-    Print("  /wready combat  - solo en combate on/off (actual: " .. (db.onlyCombat and "on" or "off") .. ")")
-    Print("  /wready list  - lista de habilidades con su numero")
-    Print("  /wready toggle <n>  - activar/desactivar una habilidad")
-    Print("  /wready debug  - registro on/off para diagnosticar")
-    Print("  /wready reset  - volver a la configuracion por defecto")
+    Print("  /pvpkit max aviso|ofensivas|defensivas <n>  - maximo de iconos")
+    Print("  /pvpkit pop <seg>  - duracion del aviso grande (actual: " .. db.popTime .. ")")
+    Print("  /pvpkit combat  - solo en combate on/off (actual: " .. (db.onlyCombat and "on" or "off") .. ")")
+    Print("  /pvpkit list  - lista de habilidades con su numero")
+    Print("  /pvpkit toggle <n>  - activar/desactivar una habilidad")
+    Print("  /pvpkit debug  - registro on/off para diagnosticar")
+    Print("  /pvpkit reset  - volver a la configuracion por defecto")
 end
 
 local function List()
@@ -426,12 +427,12 @@ local function List()
     end
 end
 
-SLASH_WARRIORREADY1 = "/wready"
-SLASH_WARRIORREADY2 = "/warriorready"
-SlashCmdList.WARRIORREADY = function(msg)
+SLASH_PVPKIT1 = "/pvpkit"
+SLASH_PVPKIT2 = "/pvk"
+SlashCmdList.PVPKIT = function(msg)
     local cmd, a, b = strsplit(" ", strlower(strtrim(msg or "")))
     if cmd == "unlock" then
-        db.locked = false; ApplyLock(); Print("desbloqueado, arrastra el aviso y la barra. /wready lock para fijar.")
+        db.locked = false; ApplyLock(); Print("desbloqueado, arrastra el aviso y la barra. /pvpkit lock para fijar.")
     elseif cmd == "lock" then
         db.locked = true; ApplyLock(); Print("bloqueado.")
     elseif cmd == "test" then
@@ -443,13 +444,13 @@ SlashCmdList.WARRIORREADY = function(msg)
         Print("registro " .. (root.debug and "activado (se guarda al hacer /reload)" or "desactivado"))
     elseif cmd == "size" or cmd == "max" then
         local g, v = GROUP_ALIAS[a or ""], tonumber(b or "")
-        if not g or not v then Print("uso: /wready " .. cmd .. " aviso|ofensivas|defensivas <numero>") return end
+        if not g or not v then Print("uso: /pvpkit " .. cmd .. " aviso|ofensivas|defensivas <numero>") return end
         db.groups[g][cmd] = v
         ApplyAnchor(g)
         Print(GROUP_LABEL[g] .. ": " .. cmd .. " = " .. v)
     elseif cmd == "pop" then
         local v = tonumber(a or "")
-        if not v then Print("uso: /wready pop <segundos>") return end
+        if not v then Print("uso: /pvpkit pop <segundos>") return end
         db.popTime = v; Print("aviso grande: " .. v .. "s")
     elseif cmd == "combat" then
         db.onlyCombat = not db.onlyCombat; Print("solo en combate: " .. (db.onlyCombat and "on" or "off"))
@@ -457,7 +458,7 @@ SlashCmdList.WARRIORREADY = function(msg)
         List()
     elseif cmd == "toggle" then
         local s = ns.spells[tonumber(a or "")]
-        if not s then Print("numero invalido, usa /wready list") return end
+        if not s then Print("numero invalido, usa /pvpkit list") return end
         db.disabled[s.id] = not db.disabled[s.id] or nil
         Print((s.name or s.id) .. ": " .. (db.disabled[s.id] and "desactivada" or "activada"))
     elseif cmd == "config" then
@@ -521,8 +522,8 @@ end
 
 -- Pasa de la version sin perfiles (todo en la raiz) a perfiles
 local function InitRoot()
-    WarriorReadyDB = WarriorReadyDB or {}
-    root = WarriorReadyDB
+    PvPKitDB = PvPKitDB or {}
+    root = PvPKitDB
     if not root.profiles then
         local legacy = {}
         for k, v in pairs(root) do
@@ -607,10 +608,17 @@ end
 driver:RegisterEvent("PLAYER_LOGIN")
 driver:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
-        if select(2, UnitClass("player")) ~= "WARRIOR" then
-            SlashCmdList.WARRIORREADY = function() Print("solo funciona con guerreros.") end
+        -- Deteccion de clase: cada clase registra su lista en ns.classes (Warrior.lua, Shaman.lua...)
+        local classLabel, class = UnitClass("player")
+        local data = ns.classes[class]
+        if not data then
+            local msg = "todavía no tiene habilidades para " .. classLabel .. "."
+            SlashCmdList.PVPKIT = function() Print(msg) end
+            Print(msg)
             return
         end
+        ns.class, ns.classIcon = class, data.icon
+        ns.spells, ns.procs = data.spells, data.procs
         InitRoot()
 
         CreateAnchor("main")
@@ -631,7 +639,7 @@ driver:SetScript("OnEvent", function(self, event)
             local ok, err = pcall(ns.InitOptions)
             if not ok then ns.LogError("opciones: " .. tostring(err)) end
         end
-        Print("cargado. Boton en el minimapa o /wready para ver los comandos.")
+        Print("cargado. Boton en el minimapa o /pvpkit para ver los comandos.")
     elseif event == "UPDATE_SHAPESHIFT_FORM" then
         quietUntil = GetTime() + STANCE_QUIET
     else

@@ -1,0 +1,11 @@
+## Interface: 30300
+## Title: |cffc79c6ePvP Kit|r
+## Notes: Muestra en grande las habilidades listas para usar y los procs activos (ignora el GCD).
+## Author: hernandomiguel
+## Version: 0.2.0
+## SavedVariables: PvPKitDB
+
+Warrior.lua
+Shaman.lua
+Core.lua
+Options.lua

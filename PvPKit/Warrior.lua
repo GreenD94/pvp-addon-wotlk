@@ -6,7 +6,7 @@ local _, ns = ...
 --        Excepcion: Cargar, Interceptar e Intervenir van en la ofensiva.
 -- aura = solo disponible si el jugador tiene este buff (procs)
 -- cond = condicion extra, ver ns.conditions en Core.lua
-ns.spells = {
+local spells = {
     -- Ofensivas: hacen dano
     { id = 5308 },                        -- Execute (objetivo < 20% o Muerte subita)
     { id = 23922 },                       -- Shield Slam (incluye reinicio por Espada y escudo)
@@ -61,11 +61,18 @@ ns.spells = {
 }
 
 -- Procs: buffs que se muestran en el aviso grande mientras duren
-ns.procs = {
+local procs = {
     { id = 50227 },  -- Sword and Board (Embate con escudo gratis y sin cooldown)
     { id = 46916 },  -- Bloodsurge / Slam! (Embate instantaneo)
     { id = 52437 },  -- Sudden Death (Ejecutar con cualquier vida)
     { id = 60503 },  -- Taste for Blood (Abrumar disponible)
     { id = 58363 },  -- Glyph of Revenge (proximo Golpe heroico gratis)
     { id = 65156 },  -- Juggernaut (tras Cargar: critico en Golpe mortal / Embate)
+}
+
+ns.classes = ns.classes or {}
+ns.classes.WARRIOR = {
+    icon = "Interface\Icons\Ability_Warrior_DefensiveStance",
+    spells = spells,
+    procs = procs,
 }

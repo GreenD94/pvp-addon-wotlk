@@ -1,6 +1,5 @@
 local _, ns = ...
 
-local ICON = "Interface\\Icons\\Ability_Warrior_DefensiveStance"
 local MINIMAP_RADIUS = 80
 
 local ICON_SIZE, ICON_GAP, COLS = 32, 4, 10
@@ -257,7 +256,7 @@ local function BuildSizesPage(page)
         label:SetPoint("TOPLEFT", PAD, y - 2)
         label:SetText(grp.label)
 
-        local s = CreateFrame("Slider", "WarriorReadySizeSlider_" .. grp.key, page, "OptionsSliderTemplate")
+        local s = CreateFrame("Slider", "PvPKitSizeSlider_" .. grp.key, page, "OptionsSliderTemplate")
         s:SetWidth(200)
         s:SetPoint("TOPLEFT", PAD + 140, y)
         s:SetMinMaxValues(1, #SIZE_PRESETS)
@@ -312,7 +311,7 @@ local function BuildPositionPage(page)
         label:SetPoint("TOPLEFT", PAD, y - 6)
         label:SetText(grp.label)
 
-        local check = CreateFrame("CheckButton", "WarriorReadyVertical_" .. grp.key, page, "UICheckButtonTemplate")
+        local check = CreateFrame("CheckButton", "PvPKitVertical_" .. grp.key, page, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", PAD + 140, y)
         _G[check:GetName() .. "Text"]:SetText("Vertical")
         check:SetScript("OnClick", function(self)
@@ -370,9 +369,9 @@ local function BuildProfilesPage(page)
     currentProfileLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 22)
 
     local actions = {
-        { label = "Nuevo",  popup = "WARRIORREADY_NEW_PROFILE" },
-        { label = "Copiar", popup = "WARRIORREADY_COPY_PROFILE" },
-        { label = "Borrar", popup = "WARRIORREADY_DELETE_PROFILE" },
+        { label = "Nuevo",  popup = "PVPKIT_NEW_PROFILE" },
+        { label = "Copiar", popup = "PVPKIT_COPY_PROFILE" },
+        { label = "Borrar", popup = "PVPKIT_DELETE_PROFILE" },
     }
     for i, act in ipairs(actions) do
         local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
@@ -429,9 +428,9 @@ local function NameDialog(text, copyCurrent)
     }
 end
 
-StaticPopupDialogs["WARRIORREADY_NEW_PROFILE"] = NameDialog("Nombre del nuevo perfil (empieza con la configuración original):", false)
-StaticPopupDialogs["WARRIORREADY_COPY_PROFILE"] = NameDialog("Copiar el perfil %s con el nombre:", true)
-StaticPopupDialogs["WARRIORREADY_DELETE_PROFILE"] = {
+StaticPopupDialogs["PVPKIT_NEW_PROFILE"] = NameDialog("Nombre del nuevo perfil (empieza con la configuración original):", false)
+StaticPopupDialogs["PVPKIT_COPY_PROFILE"] = NameDialog("Copiar el perfil %s con el nombre:", true)
+StaticPopupDialogs["PVPKIT_DELETE_PROFILE"] = {
     text = "¿Borrar el perfil %s?",
     button1 = YES,
     button2 = NO,
@@ -473,7 +472,7 @@ local function CreateTab(sidebar, i, def)
 end
 
 local function CreateWindow()
-    local f = CreateFrame("Frame", "WarriorReadyOptions", UIParent)
+    local f = CreateFrame("Frame", "PvPKitOptions", UIParent)
     f:SetWidth(SIDEBAR_W + PAD * 2 + COLS * (ICON_SIZE + ICON_GAP) - ICON_GAP); f:SetHeight(130)
     f:SetPoint("CENTER")
     f:SetFrameStrata("HIGH")  -- por debajo de las ventanas emergentes (DIALOG)
@@ -499,7 +498,7 @@ local function CreateWindow()
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", header, "TOP", 0, -14)
-    title:SetText("WarriorReady")
+    title:SetText("PvPKit")
 
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
@@ -569,9 +568,9 @@ local function CreateWindow()
     -- Pestana General
     local general = pages.general
     general.height = 150
-    enableCheck = CreateFrame("CheckButton", "WarriorReadyOptionsEnable", general, "UICheckButtonTemplate")
+    enableCheck = CreateFrame("CheckButton", "PvPKitOptionsEnable", general, "UICheckButtonTemplate")
     enableCheck:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    _G[enableCheck:GetName() .. "Text"]:SetText("Activar WarriorReady")
+    _G[enableCheck:GetName() .. "Text"]:SetText("Activar PvP Kit")
     enableCheck:SetScript("OnClick", function(self)
         ns.SetEnabled(self:GetChecked() and true or false)
     end)
@@ -580,7 +579,7 @@ local function CreateWindow()
     reset:SetWidth(200); reset:SetHeight(22)
     reset:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 40)
     reset:SetText("Restaurar configuración")
-    reset:SetScript("OnClick", function() StaticPopup_Show("WARRIORREADY_RESET") end)
+    reset:SetScript("OnClick", function() StaticPopup_Show("PVPKIT_RESET") end)
 
     local hint = general:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("BOTTOM", 0, 22)
@@ -612,7 +611,7 @@ function RefreshWindow(tab)
     ns.SelectTab(tab or "general")
 end
 
-StaticPopupDialogs["WARRIORREADY_RESET"] = {
+StaticPopupDialogs["PVPKIT_RESET"] = {
     text = "¿Restaurar la configuración del perfil actual a los valores originales?",
     button1 = YES,
     button2 = NO,
@@ -678,7 +677,7 @@ end
 
 local function ShowTooltip(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("WarriorReady")
+    GameTooltip:AddLine("PvPKit")
     GameTooltip:AddLine(ns.GetDB().enabled and "|cff40ff40Activado|r" or "|cffff4040Desactivado|r")
     GameTooltip:AddLine("Clic izquierdo: opciones", 1, 1, 1)
     GameTooltip:AddLine("Clic derecho: activar/desactivar", 1, 1, 1)
@@ -687,7 +686,7 @@ local function ShowTooltip(self)
 end
 
 local function CreateMinimapButton()
-    local b = CreateFrame("Button", "WarriorReadyMinimapButton", Minimap)
+    local b = CreateFrame("Button", "PvPKitMinimapButton", Minimap)
     b:SetWidth(31); b:SetHeight(31)
     b:SetFrameStrata("MEDIUM")
     b:SetFrameLevel(8)
@@ -701,7 +700,7 @@ local function CreateMinimapButton()
     bg:SetPoint("TOPLEFT", 7, -5)
 
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetTexture(ICON)
+    b.icon:SetTexture(ns.classIcon)  -- icono de la clase detectada
     b.icon:SetWidth(17); b.icon:SetHeight(17)
     b.icon:SetPoint("TOPLEFT", 7, -6)
 
