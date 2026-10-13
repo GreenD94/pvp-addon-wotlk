@@ -148,6 +148,7 @@ local function SaveAnchor(g)
     local point, _, relPoint, x, y = f:GetPoint()
     local cfg = db.groups[g]
     cfg.point, cfg.relPoint, cfg.x, cfg.y = point, relPoint, x, y
+    cfg.zone = nil  -- posicion libre: ya no esta en una zona de la cuadricula
 end
 
 local function ApplyAnchor(g)
@@ -468,9 +469,44 @@ SlashCmdList.WARRIORREADY = function(msg)
     end
 end
 
+
+-- Zonas de la cuadricula 3x3 de la pestana Posicion.
+-- Los margenes evitan los marcos del juego (jugador/objetivo, minimapa, chat, barras de accion).
+-- stack: hacia donde se apilan los grupos que comparten zona (-1 hacia abajo, 1 hacia arriba)
+local ZONES = {
+    TL = { point = "TOPLEFT",     x = 20,   y = -130, stack = -1 },
+    T  = { point = "TOP",         x = 0,    y = -120, stack = -1 },
+    TR = { point = "TOPRIGHT",    x = -20,  y = -240, stack = -1 },
+    L  = { point = "LEFT",        x = 20,   y = 0,    stack = -1 },
+    M  = { point = "CENTER",      x = 0,    y = -60,  stack = -1 },
+    R  = { point = "RIGHT",       x = -100, y = 0,    stack = -1 },
+    BL = { point = "BOTTOMLEFT",  x = 20,   y = 240,  stack = 1 },
+    B  = { point = "BOTTOM",      x = 0,    y = 160,  stack = 1 },
+    BR = { point = "BOTTOMRIGHT", x = -100, y = 160,  stack = 1 },
+}
+local GROUP_ORDER = { "main", "cd", "def" }
+local ZONE_GAP = 12
+
+-- Recoloca los grupos que estan en una zona (apilandolos si comparten zona) y aplica todos
+local function ApplyZones()
+    local used = {}
+    for _, g in ipairs(GROUP_ORDER) do
+        local cfg = db.groups[g]
+        local z = cfg.zone and ZONES[cfg.zone]
+        if z then
+            local off = used[cfg.zone] or 0
+            cfg.point, cfg.relPoint, cfg.x, cfg.y = z.point, z.point, z.x, z.y + z.stack * off
+            local height = cfg.dir == "V" and (cfg.size * 4 + db.spacing * 3) or cfg.size
+            used[cfg.zone] = off + height + ZONE_GAP
+        end
+        ApplyAnchor(g)
+    end
+end
+
 -- API para Options.lua
 function ns.GetDB() return db end
-function ns.GetKnown() return known end
+ns.ApplyGroup = function() ApplyZones() end
+ns.ZONES = ZONES
 ns.ApplyGroup = function(g) ApplyAnchor(g) end
 
 -- Vista previa: muestra todo durante TEST_TIME segundos
@@ -516,6 +552,7 @@ driver:SetScript("OnEvent", function(self, event)
         CreateAnchor("main")
         CreateAnchor("cd")
         CreateAnchor("def")
+        ApplyZones()
         ApplyLock()
         ScanSpellbook()
 
