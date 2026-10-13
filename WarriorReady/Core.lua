@@ -472,6 +472,7 @@ end
 
 -- API para Options.lua
 function ns.GetDB() return db end
+function ns.GetKnown() return known end
 ns.ApplyGroup = function() ApplyAll() end
 -- Guarda en el registro aunque /wready debug este apagado (para errores)
 function ns.LogError(msg)
@@ -494,7 +495,6 @@ function ns.ResetDefaults()
     ApplyLock()
     Print("configuracion restaurada.")
 end
-ns.ApplyGroup = function(g) ApplyAnchor(g) end
 
 -- Vista previa: muestra todo durante TEST_TIME segundos
 function ns.StartTest()
