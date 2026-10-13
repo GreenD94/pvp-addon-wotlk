@@ -17,10 +17,12 @@ local TAB_DEFS = {
     { key = "spells",  label = "Habilidades" },
     { key = "sizes",   label = "Tamaños" },
     { key = "position", label = "Posición" },
-    { key = "profiles", label = "Perfiles" },
 }
 
 local profileButtons, currentProfileLabel, deleteProfileButton = {}, nil, nil
+-- Modo perfiles: las pestanas se ocultan y la barra lateral muestra "Volver"
+local changeProfileButton, sidebarProfileLabel, backButton
+local lastTab = "general"
 
 local positionControls = {}  -- [grupo] = casilla Vertical
 local moveButton
@@ -377,7 +379,7 @@ end
 local function BuildProfilesPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Cada personaje recuerda qué perfil usa.")
+    help:SetText("Elige un perfil o crea uno. Cada personaje recuerda qué perfil usa.")
 
     currentProfileLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     currentProfileLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 22)
@@ -537,6 +539,29 @@ local function CreateWindow()
         tabs[i] = CreateTab(sidebar, i, def)
     end
 
+    -- Perfiles: pagina aparte, se entra con "Cambiar perfil" y se sale con "Volver"
+    pages.profiles = CreateFrame("Frame", nil, f)
+    pages.profiles:SetPoint("TOPLEFT", SIDEBAR_W, 0)
+    pages.profiles:SetPoint("BOTTOMRIGHT")
+    pages.profiles:Hide()
+
+    changeProfileButton = CreateFrame("Button", nil, sidebar, "UIPanelButtonTemplate")
+    changeProfileButton:SetWidth(SIDEBAR_W - 26); changeProfileButton:SetHeight(22)
+    changeProfileButton:SetPoint("BOTTOM", 0, 10)
+    changeProfileButton:SetText("Cambiar perfil")
+    changeProfileButton:SetScript("OnClick", function() ns.SelectTab("profiles") end)
+
+    sidebarProfileLabel = sidebar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    sidebarProfileLabel:SetPoint("BOTTOM", changeProfileButton, "TOP", 0, 6)
+    sidebarProfileLabel:SetWidth(SIDEBAR_W - 24)
+
+    backButton = CreateFrame("Button", nil, sidebar, "UIPanelButtonTemplate")
+    backButton:SetWidth(SIDEBAR_W - 26); backButton:SetHeight(22)
+    backButton:SetPoint("TOP", 0, -10)
+    backButton:SetText("« Volver")
+    backButton:SetScript("OnClick", function() ns.SelectTab(lastTab) end)
+    backButton:Hide()
+
     -- Pestana General
     local general = pages.general
     general.height = 150
@@ -579,6 +604,7 @@ function RefreshWindow(tab)
     UpdateSizeButtons()
     UpdatePositionControls()
     BuildProfileList()
+    sidebarProfileLabel:SetText("Perfil:\n|cffffd100" .. ns.GetCurrentProfile() .. "|r")
     ns.SelectTab(tab or "general")
 end
 
@@ -598,16 +624,26 @@ StaticPopupDialogs["WARRIORREADY_RESET"] = {
 
 function ns.SelectTab(key)
     if not pages[key] then key = "general" end
-    ns.GetDB().optionsTab = key
+    local profileMode = key == "profiles"
+    if not profileMode then lastTab = key end
+
     for _, t in ipairs(tabs) do
         local selected = t.key == key
         if selected then t.sel:Show() else t.sel:Hide() end
         t.text:SetFontObject(selected and GameFontHighlight or GameFontNormal)
+        if profileMode then t:Hide() else t:Show() end
     end
+    if profileMode then
+        backButton:Show(); changeProfileButton:Hide(); sidebarProfileLabel:Hide()
+    else
+        backButton:Hide(); changeProfileButton:Show(); sidebarProfileLabel:Show()
+    end
+
     for k, page in pairs(pages) do
         if k == key then page:Show() else page:Hide() end
     end
-    window:SetHeight(math.max(pages[key].height, #TAB_DEFS * 24 + 60))
+    -- alto minimo: pestanas arriba + perfil y boton abajo en la barra lateral
+    window:SetHeight(math.max(pages[key].height, #TAB_DEFS * 24 + 110))
 end
 
 function ns.ToggleOptions()
