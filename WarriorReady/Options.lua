@@ -30,7 +30,7 @@ local SIZE_GROUPS = {
     { key = "cd",   label = "Barra ofensiva" },
     { key = "def",  label = "Barra defensiva" },
 }
-local sizeButtons = {}  -- [grupo] = { boton, ... }
+local sizeButtons = {}  -- [grupo] = slider
 local iconPool, headers, sectionButtons = {}, {}, {}
 local UpdateSectionButton
 
@@ -175,18 +175,28 @@ end
 -- Pestana Tamanos
 ---------------------------------------------------------------------------
 
+local function PresetIndex(size)
+    local best, bestDiff = 1, math.huge
+    for i, p in ipairs(SIZE_PRESETS) do
+        local diff = math.abs(p.size - size)
+        if diff < bestDiff then best, bestDiff = i, diff end
+    end
+    return best
+end
+
+local function SetSliderText(slider, i)
+    local p = SIZE_PRESETS[i]
+    _G[slider:GetName() .. "Text"]:SetText(p.label .. " - " .. p.name .. " (" .. p.size .. " px)")
+end
+
 local function UpdateSizeButtons()
     local groups = ns.GetDB().groups
-    for g, list in pairs(sizeButtons) do
-        for _, b in ipairs(list) do
-            local selected = groups[g].size == b.size
-            if selected then b.mark:Show() else b.mark:Hide() end
-            if selected then
-                b:GetFontString():SetTextColor(1, 1, 1)
-            else
-                b:GetFontString():SetTextColor(0.5, 0.5, 0.5)
-            end
-        end
+    for g, slider in pairs(sizeButtons) do
+        local i = PresetIndex(groups[g].size)
+        slider.updating = true
+        slider:SetValue(i)
+        slider.updating = false
+        SetSliderText(slider, i)
     end
 end
 
@@ -195,43 +205,34 @@ local function BuildSizesPage(page)
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
     help:SetText("Al elegir un tamaño se muestra una vista previa durante 5 segundos.")
 
-    local y = CONTENT_TOP - 30
+    local y = CONTENT_TOP - 40
     for _, grp in ipairs(SIZE_GROUPS) do
         local label = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        label:SetPoint("TOPLEFT", PAD, y - 4)
+        label:SetPoint("TOPLEFT", PAD, y - 2)
         label:SetText(grp.label)
 
-        sizeButtons[grp.key] = {}
-        for i, preset in ipairs(SIZE_PRESETS) do
-            local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-            b:SetWidth(44); b:SetHeight(22)
-            b:SetPoint("TOPLEFT", PAD + 130 + (i - 1) * 48, y)
-            b:SetText(preset.label)
-            b.size = preset.size
-
-            -- Marco dorado detras del boton seleccionado
-            b.mark = page:CreateTexture(nil, "BACKGROUND")
-            b.mark:SetTexture(1, 0.82, 0, 0.9)
-            b.mark:SetPoint("TOPLEFT", b, "TOPLEFT", -3, 3)
-            b.mark:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 3, -3)
-            b.mark:Hide()
-            b:SetScript("OnClick", function()
-                ns.GetDB().groups[grp.key].size = preset.size
+        local s = CreateFrame("Slider", "WarriorReadySizeSlider_" .. grp.key, page, "OptionsSliderTemplate")
+        s:SetWidth(200)
+        s:SetPoint("TOPLEFT", PAD + 140, y)
+        s:SetMinMaxValues(1, #SIZE_PRESETS)
+        s:SetValueStep(1)
+        _G[s:GetName() .. "Low"]:SetText(SIZE_PRESETS[1].label)
+        _G[s:GetName() .. "High"]:SetText(SIZE_PRESETS[#SIZE_PRESETS].label)
+        s:SetScript("OnValueChanged", function(self, value)
+            local i = math.floor(value + 0.5)
+            SetSliderText(self, i)
+            if self.updating then return end
+            local cfg = ns.GetDB().groups[grp.key]
+            if cfg.size ~= SIZE_PRESETS[i].size then
+                cfg.size = SIZE_PRESETS[i].size
                 ns.ApplyGroup(grp.key)
                 ns.StartTest()
-                UpdateSizeButtons()
-            end)
-            b:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_TOP")
-                GameTooltip:AddLine(preset.name .. " (" .. preset.size .. " px)")
-                GameTooltip:Show()
-            end)
-            b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            sizeButtons[grp.key][i] = b
-        end
-        y = y - 32
+            end
+        end)
+        sizeButtons[grp.key] = s
+        y = y - 54
     end
-    page.height = -y + 30
+    page.height = -y + 20
 end
 
 ---------------------------------------------------------------------------
