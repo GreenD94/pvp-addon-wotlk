@@ -19,10 +19,10 @@ local TAB_DEFS = {
 }
 
 local SIZE_PRESETS = {
-    { label = "Grande",        size = 80 },
-    { label = "Mediano",       size = 60 },
-    { label = "Pequeño",       size = 44 },
-    { label = "Extra pequeño", size = 32 },
+    { label = "XS", name = "Extra pequeño", size = 32 },
+    { label = "S",  name = "Pequeño",       size = 44 },
+    { label = "M",  name = "Mediano",       size = 60 },
+    { label = "L",  name = "Grande",        size = 80 },
 }
 
 local SIZE_GROUPS = {
@@ -189,18 +189,17 @@ local function BuildSizesPage(page)
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
     help:SetText("Al elegir un tamaño se muestra una vista previa durante 5 segundos.")
 
-    local y = CONTENT_TOP - 26
+    local y = CONTENT_TOP - 30
     for _, grp in ipairs(SIZE_GROUPS) do
         local label = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        label:SetPoint("TOPLEFT", PAD, y)
+        label:SetPoint("TOPLEFT", PAD, y - 4)
         label:SetText(grp.label)
-        y = y - 20
 
         sizeButtons[grp.key] = {}
         for i, preset in ipairs(SIZE_PRESETS) do
             local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-            b:SetWidth(96); b:SetHeight(22)
-            b:SetPoint("TOPLEFT", PAD + (i - 1) * 100, y)
+            b:SetWidth(44); b:SetHeight(22)
+            b:SetPoint("TOPLEFT", PAD + 130 + (i - 1) * 48, y)
             b:SetText(preset.label)
             b.size = preset.size
             b:SetScript("OnClick", function()
@@ -209,11 +208,17 @@ local function BuildSizesPage(page)
                 ns.StartTest()
                 UpdateSizeButtons()
             end)
+            b:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:AddLine(preset.name .. " (" .. preset.size .. " px)")
+                GameTooltip:Show()
+            end)
+            b:SetScript("OnLeave", function() GameTooltip:Hide() end)
             sizeButtons[grp.key][i] = b
         end
-        y = y - 36
+        y = y - 32
     end
-    page.height = -y + 20
+    page.height = -y + 30
 end
 
 ---------------------------------------------------------------------------
