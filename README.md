@@ -127,6 +127,7 @@ Vista elegida: **opción A**, iconos grandes en el centro con el nombre del juga
 Para probar sin equipo de arena: campos de batalla (controles, perjuicios y vida baja), duelos con un amigo (enemigos) y grupo con un amigo (aliados). El registro guarda lo que pasa.
 
 - [x] Modo demostración (`/pvpkit demo` o botón "Ver demostración") y pestaña Alertas con casillas por sección y umbral de vida baja (solo visual). Fila Aliados y fila Enemigos en el centro-arriba; borde de color según el tipo (morado control, rojo perjuicio/vida, dorado inmune, gris abalorio, azul lanzando), barra que se vacía con la duración (sin números), DR en la esquina y "¡AHORA!" latiendo.
+- [x] Cada alerta muestra la **cara** del jugador (si el juego la tiene: arena, grupo, objetivo, foco) junto al icono del efecto, con el emblema de la clase en la esquina; si no hay cara, el emblema de la clase ocupa su lugar. Tamaño de alertas XS/S/M/L en la pestaña Tamaños (vista previa con la demostración).
 - [ ] **Aliados:** control (CC) mientras dure, perjuicios importantes, vida baja (umbral configurable).
 - [ ] **Aliados:** "lo están enfocando". Solo es fiable en arena: el juego solo da el objetivo de los enemigos de arena o del objetivo/foco.
 - [ ] **Enemigos:** control (CC) con quién lo puso y cuánto le queda; perjuicios; vida baja (para rematar); hechizo que está lanzando.

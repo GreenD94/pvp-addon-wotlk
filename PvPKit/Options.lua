@@ -254,10 +254,32 @@ local function SetSliderText(slider, i)
     _G[slider:GetName() .. "Text"]:SetText(p.label .. " - " .. p.name .. " (" .. p.size .. " px)")
 end
 
+-- Filas de la pestana Tamanos: las barras y ademas las alertas JcJ
+local SIZE_ROWS = {}
+for _, grp in ipairs(SIZE_GROUPS) do SIZE_ROWS[#SIZE_ROWS + 1] = grp end
+SIZE_ROWS[#SIZE_ROWS + 1] = { key = "alerts", label = "Alertas JcJ" }
+
+local function GetSize(key)
+    local db = ns.GetDB()
+    if key == "alerts" then return db.alertSize end
+    return db.groups[key].size
+end
+
+local function SetSize(key, size)
+    local db = ns.GetDB()
+    if key == "alerts" then
+        db.alertSize = size
+        ns.ShowDemo()  -- vista previa con la demostracion
+    else
+        db.groups[key].size = size
+        ns.ApplyGroup()
+        ns.StartTest()
+    end
+end
+
 local function UpdateSizeButtons()
-    local groups = ns.GetDB().groups
-    for g, slider in pairs(sizeButtons) do
-        local i = PresetIndex(groups[g].size)
+    for key, slider in pairs(sizeButtons) do
+        local i = PresetIndex(GetSize(key))
         slider.updating = true
         slider:SetValue(i)
         slider.updating = false
@@ -271,7 +293,7 @@ local function BuildSizesPage(page)
     help:SetText("Al elegir un tamaño se muestra una vista previa durante 5 segundos.")
 
     local y = CONTENT_TOP - 40
-    for _, grp in ipairs(SIZE_GROUPS) do
+    for _, grp in ipairs(SIZE_ROWS) do
         local label = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         label:SetPoint("TOPLEFT", PAD, y - 2)
         label:SetText(grp.label)
@@ -287,11 +309,8 @@ local function BuildSizesPage(page)
             local i = math.floor(value + 0.5)
             SetSliderText(self, i)
             if self.updating then return end
-            local cfg = ns.GetDB().groups[grp.key]
-            if cfg.size ~= SIZE_PRESETS[i].size then
-                cfg.size = SIZE_PRESETS[i].size
-                ns.ApplyGroup(grp.key)
-                ns.StartTest()
+            if GetSize(grp.key) ~= SIZE_PRESETS[i].size then
+                SetSize(grp.key, SIZE_PRESETS[i].size)
             end
         end)
         sizeButtons[grp.key] = s

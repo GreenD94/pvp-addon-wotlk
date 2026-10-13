@@ -22,6 +22,7 @@ local defaults = {
     },
     disabled = {},  -- [spellID] = true
     -- Alertas JcJ (de momento solo se usan en la demostracion)
+    alertSize = 60,
     alerts = {
         ally  = { cc = true, debuff = true, health = true, healthPct = 30, focus = true },
         enemy = { cc = true, debuff = true, health = true, healthPct = 30, casts = true,
