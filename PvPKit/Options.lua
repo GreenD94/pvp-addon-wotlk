@@ -16,7 +16,27 @@ local TAB_DEFS = {
     { key = "spells",  label = "Habilidades" },
     { key = "sizes",   label = "Tamaños" },
     { key = "position", label = "Posición" },
+    { key = "alerts",   label = "Alertas" },
 }
+
+local ALERT_SECTIONS = {
+    { key = "ally", title = "Aliados", color = { 0.3, 1, 0.3 }, options = {
+        { key = "cc",     label = "Control (CC)" },
+        { key = "debuff", label = "Perjuicios importantes" },
+        { key = "health", label = "Vida baja" },
+        { key = "focus",  label = "Lo están enfocando" },
+    } },
+    { key = "enemy", title = "Enemigos", color = { 1, 0.3, 0.3 }, options = {
+        { key = "cc",         label = "Control (CC) y DR" },
+        { key = "debuff",     label = "Perjuicios" },
+        { key = "health",     label = "Vida baja" },
+        { key = "casts",      label = "Hechizo que lanza" },
+        { key = "trinket",    label = "Abalorio JcJ" },
+        { key = "immune",     label = "Inmunidades" },
+        { key = "killWindow", label = "¡AHORA! (ventana)" },
+    } },
+}
+local alertControls = {}  -- { check o slider, seccion, opcion }
 
 local profileTabs, createProfileButtons = {}, {}  -- pestanas de perfil y botones Nuevo/Copiar
 local currentProfileLabel, deleteProfileButton, countLabel
@@ -327,6 +347,78 @@ local function BuildPositionPage(page)
 end
 
 ---------------------------------------------------------------------------
+-- Pestana Alertas (de momento solo afecta a la demostracion)
+---------------------------------------------------------------------------
+
+local function UpdateAlertControls()
+    local alerts = ns.GetDB().alerts
+    for _, c in ipairs(alertControls) do
+        local value = alerts[c.section][c.option]
+        if c.isSlider then
+            c.widget.updating = true
+            c.widget:SetValue(value)
+            c.widget.updating = false
+            _G[c.widget:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
+        else
+            c.widget:SetChecked(value)
+        end
+    end
+end
+
+local function BuildAlertsPage(page)
+    local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
+    help:SetText("Por ahora solo se ve en la demostración, con datos inventados.")
+
+    local demo = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    demo:SetWidth(160); demo:SetHeight(22)
+    demo:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 20)
+    demo:SetText("Ver demostración")
+    demo:SetScript("OnClick", function(self)
+        self:SetText(ns.ToggleDemo() and "Ocultar demostración" or "Ver demostración")
+    end)
+
+    local lowest = 0
+    for col, sec in ipairs(ALERT_SECTIONS) do
+        local x = PAD + (col - 1) * 190
+        local title = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        title:SetPoint("TOPLEFT", x, CONTENT_TOP - 56)
+        title:SetText(sec.title)
+        title:SetTextColor(unpack(sec.color))
+
+        local y = CONTENT_TOP - 74
+        for _, opt in ipairs(sec.options) do
+            local check = CreateFrame("CheckButton", "PvPKitAlert_" .. sec.key .. "_" .. opt.key, page, "UICheckButtonTemplate")
+            check:SetWidth(24); check:SetHeight(24)
+            check:SetPoint("TOPLEFT", x - 4, y)
+            _G[check:GetName() .. "Text"]:SetText(opt.label)
+            check:SetScript("OnClick", function(self)
+                ns.GetDB().alerts[sec.key][opt.key] = self:GetChecked() and true or false
+            end)
+            alertControls[#alertControls + 1] = { widget = check, section = sec.key, option = opt.key }
+            y = y - 24
+        end
+
+        -- Umbral de vida baja
+        local s = CreateFrame("Slider", "PvPKitAlertHealth_" .. sec.key, page, "OptionsSliderTemplate")
+        s:SetWidth(150)
+        s:SetPoint("TOPLEFT", x, y - 22)
+        s:SetMinMaxValues(10, 50)
+        s:SetValueStep(5)
+        _G[s:GetName() .. "Low"]:SetText("10%")
+        _G[s:GetName() .. "High"]:SetText("50%")
+        s:SetScript("OnValueChanged", function(self, value)
+            value = math.floor(value / 5 + 0.5) * 5
+            _G[self:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
+            if not self.updating then ns.GetDB().alerts[sec.key].healthPct = value end
+        end)
+        alertControls[#alertControls + 1] = { widget = s, section = sec.key, option = "healthPct", isSlider = true }
+        lowest = math.min(lowest, y - 60)
+    end
+    page.height = -lowest + 20
+end
+
+---------------------------------------------------------------------------
 -- Pestana Perfiles
 ---------------------------------------------------------------------------
 
@@ -593,6 +685,7 @@ local function CreateWindow()
     BuildSizesPage(pages.sizes)
     BuildPositionPage(pages.position)
     BuildProfilesPage(pages.profiles)
+    BuildAlertsPage(pages.alerts)
 
     f:SetScript("OnShow", function()
         local ok, err = pcall(RefreshWindow)
@@ -607,6 +700,7 @@ function RefreshWindow(tab)
     UpdateSizeButtons()
     UpdatePositionControls()
     BuildProfileList()
+    UpdateAlertControls()
     sidebarProfileLabel:SetText("Perfil:\n|cffffd100" .. ns.GetCurrentProfile() .. "|r")
     ns.SelectTab(tab or "general")
 end

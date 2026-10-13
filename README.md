@@ -72,6 +72,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - `PvPKit.toc`: metadatos del addon (Interface 30300).
 - `Warrior.lua`, `Shaman.lua`: una por clase. Lista de habilidades (orden de prioridad, barra y condiciones) y procs, registradas en `ns.classes[CLASE]`. Para añadir una clase basta con crear su archivo y añadirlo al `.toc`.
 - `Core.lua`: lógica, dibujo, comandos y registro.
+- `Alerts.lua`: alertas JcJ (por ahora solo el modo demostración).
 - `Options.lua`: botón del minimapa (clic izquierdo abre la ventana, clic derecho activa/desactiva, arrastrar lo mueve) y ventana de opciones.
 
 ## Historial
@@ -119,5 +120,22 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - [x] Perfiles de configuración guardados.
 - [x] Detección automática de clase (guerrero y chamán).
 - [ ] Replicar para todas las clases (al final, cuando todo esté probado).
-- [ ] Mostrar en grande cuando un aliado tiene un control (CC), mientras le dure.
-- [ ] Mostrar en grande cuando un jugador enemigo lanza un hechizo, o qué habilidades tiene disponibles.
+### Alertas JcJ (objetivo: ventaja en arena)
+
+Vista elegida: **opción A**, iconos grandes en el centro con el nombre del jugador. Se configura en una pestaña **Alertas** con dos secciones, Aliados y Enemigos. Primero se hace un **modo demostración** (`/pvpkit demo`) con datos inventados para revisar la experiencia de uso; después, los datos reales.
+
+Para probar sin equipo de arena: campos de batalla (controles, perjuicios y vida baja), duelos con un amigo (enemigos) y grupo con un amigo (aliados). El registro guarda lo que pasa.
+
+- [x] Modo demostración (`/pvpkit demo` o botón "Ver demostración") y pestaña Alertas con casillas por sección y umbral de vida baja (solo visual). Fila Aliados y fila Enemigos en el centro-arriba; borde de color según el tipo (morado control, rojo perjuicio/vida, dorado inmune, gris abalorio, azul lanzando), barra que se vacía con la duración (sin números), DR en la esquina y "¡AHORA!" latiendo.
+- [ ] **Aliados:** control (CC) mientras dure, perjuicios importantes, vida baja (umbral configurable).
+- [ ] **Aliados:** "lo están enfocando". Solo es fiable en arena: el juego solo da el objetivo de los enemigos de arena o del objetivo/foco.
+- [ ] **Enemigos:** control (CC) con quién lo puso y cuánto le queda; perjuicios; vida baja (para rematar); hechizo que está lanzando.
+- [ ] **Rendimientos decrecientes (DR)** por tipo de control sobre cada enemigo, para encadenar controles con el equipo. Ejemplo: el chamán aturde y tú lanzas tu aturdimiento justo al acabar, sabiendo si durará entero, la mitad o nada. Necesita la lista de controles de todas las clases.
+- [ ] **Abalorio JcJ del enemigo:** si ya lo usó y cuánto falta para que lo recupere.
+- [ ] **Inmunidades y defensivos activos del enemigo** (Escudo divino, Bloque de hielo, Capa de las Sombras, Caparazón antimagia, Reflejo de hechizos, Filotormenta...): "no gastes control ni hechizos ahora".
+- [ ] **Ventana de muerte:** sanador enemigo controlado y objetivo con poca vida, sale "¡AHORA!".
+- [ ] **Cortes del enemigo:** cuándo tiene listos Zurrar, Patada, Contrahechizo, etc. (sobre todo para el chamán sanador).
+- [ ] **Tótems enemigos:** Tótem de temblor (tu miedo no sirve) o Tótem derribador (no lances hechizos), para matarlo.
+- [ ] **Purgables:** beneficios del enemigo que el chamán puede purgar.
+- [ ] **Sanador enemigo bebiendo** (le falta maná: hay que presionar).
+- [ ] **Tu propio DR:** si el próximo control que recibas será completo, la mitad o nada, para decidir si usar tu abalorio.

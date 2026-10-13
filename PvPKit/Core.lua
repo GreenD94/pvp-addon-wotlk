@@ -21,6 +21,12 @@ local defaults = {
         fav  = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -304, dir = "H", align = "center" },
     },
     disabled = {},  -- [spellID] = true
+    -- Alertas JcJ (de momento solo se usan en la demostracion)
+    alerts = {
+        ally  = { cc = true, debuff = true, health = true, healthPct = 30, focus = true },
+        enemy = { cc = true, debuff = true, health = true, healthPct = 30, casts = true,
+                  trinket = true, immune = true, killWindow = true },
+    },
     favorites = {}, -- [spellID] = true: va a la barra de favoritas en vez de la suya
 }
 
@@ -404,6 +410,7 @@ local GROUP_ALIAS = { aviso = "main", ofensivas = "cd", ofe = "cd", defensivas =
 local function Help()
     Print("comandos:")
     Print("  /pvpkit config  - abrir la ventana de opciones")
+    Print("  /pvpkit demo  - demostración de las alertas JcJ on/off")
     Print("  /pvpkit unlock | lock  - mover el aviso y las barras")
     Print("  /pvpkit test  - mostrar todas las habilidades conocidas")
     Print("  /pvpkit size aviso|ofensivas|defensivas <px>  - tamano (actual: " .. db.groups.main.size
@@ -461,6 +468,8 @@ SlashCmdList.PVPKIT = function(msg)
         if not s then Print("numero invalido, usa /pvpkit list") return end
         db.disabled[s.id] = not db.disabled[s.id] or nil
         Print((s.name or s.id) .. ": " .. (db.disabled[s.id] and "desactivada" or "activada"))
+    elseif cmd == "demo" then
+        Print("demostración de alertas " .. (ns.ToggleDemo() and "activada" or "desactivada"))
     elseif cmd == "config" then
         ns.ToggleOptions()
     elseif cmd == "reset" then
