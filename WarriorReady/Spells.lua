@@ -48,3 +48,13 @@ ns.spells = {
     { id = 1719,  def = true },                        -- Recklessness
     { id = 12328, def = true },                        -- Sweeping Strikes
 }
+
+-- Procs: buffs que se muestran en el aviso grande mientras duren
+ns.procs = {
+    { id = 50227 },  -- Sword and Board (Embate con escudo gratis y sin cooldown)
+    { id = 46916 },  -- Bloodsurge / Slam! (Embate instantaneo)
+    { id = 52437 },  -- Sudden Death (Ejecutar con cualquier vida)
+    { id = 60503 },  -- Taste for Blood (Abrumar disponible)
+    { id = 58363 },  -- Glyph of Revenge (proximo Golpe heroico gratis)
+    { id = 65156 },  -- Juggernaut (tras Cargar: critico en Golpe mortal / Embate)
+}

@@ -112,6 +112,7 @@ local function ScanSpellbook()
         if s.aura then s.auraName = GetSpellInfo(s.aura) end
         if name and book[name] then known[#known + 1] = s end
     end
+    for _, p in ipairs(ns.procs) do p.name = GetSpellInfo(p.id) end
     local names = {}
     for _, s in ipairs(known) do names[#names + 1] = s.name end
     Log("conocidas: " .. table.concat(names, ", "))
@@ -236,15 +237,44 @@ local function SetButton(b, s, state)
 end
 
 -- Aviso grande: destello al inicio y desvanecido al final
-local function AnimatePop(b, age)
+local function Flash(b, age)
     if age < FLASH_TIME then
         b.flash:SetAlpha(1 - age / FLASH_TIME)
         b.flash:Show()
     else
         b.flash:Hide()
     end
+end
+
+local function AnimatePop(b, age)
+    Flash(b, age)
     local left = db.popTime - age
     b:SetAlpha(left < FADE_TIME and left / FADE_TIME or 1)
+end
+
+local counts = { main = 0, cd = 0, def = 0 }
+
+-- Procs: en el aviso grande mientras dure el buff
+local function RenderProcs(now, visible)
+    for _, p in ipairs(ns.procs) do
+        local name, _, icon
+        if p.name then name, _, icon = UnitBuff("player", p.name) end
+        if name and not p.active then
+            p.startT = now
+            Log(p.name .. ": proc activo")
+        end
+        p.active = name ~= nil
+
+        if visible and name and counts.main < db.groups.main.max then
+            counts.main = counts.main + 1
+            local b = GetButton("main", counts.main)
+            b.icon:SetTexture(icon)
+            b.icon:SetVertexColor(1, 1, 1)
+            b:SetAlpha(1)
+            Flash(b, now - p.startT)
+            b:Show()
+        end
+    end
 end
 
 local function Layout(g, n)
@@ -262,7 +292,6 @@ end
 -- Bucle principal
 ---------------------------------------------------------------------------
 
-local counts = { main = 0, cd = 0, def = 0 }
 
 local function Describe(s)
     local usable, noRage = IsUsableSpell(s.name)
@@ -278,6 +307,7 @@ local function Render()
     local visible = db.enabled
         and (testMode or not db.locked or not db.onlyCombat or UnitAffectingCombat("player"))
     counts.main, counts.cd, counts.def = 0, 0, 0
+    RenderProcs(now, visible)
 
     for _, s in ipairs(known) do
         local state

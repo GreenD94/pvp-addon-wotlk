@@ -84,6 +84,8 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
   - la barra se separa en ofensiva y defensiva,
   - Cargar, Interceptar e Intervenir solo salen si el objetivo está a rango.
 - **Clasificación:** ofensiva = hace daño (más Cargar, Interceptar e Intervenir); defensiva = no hace daño.
+- **Botón de minimapa** con ventana para activar/desactivar.
+- **Procs:** se muestran en el aviso grande mientras dura el buff (con destello al activarse). La lista está en `ns.procs`, en `Spells.lua`.
 
 ## Pendiente
 
@@ -92,8 +94,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 ## Ideas (por hacer)
 
 - [x] Botón en el minimapa que abre una ventana para activar/desactivar el addon.
-- [ ] Mostrar cuánto falta para que una habilidad esté lista.
-- [ ] Mostrar los procs y buffs mientras están activos (por ejemplo, el de Embate con escudo gratis, y otros).
+- [x] Mostrar los procs en el aviso grande mientras están activos (Espada y escudo, Oleada sangrienta, Muerte súbita, Sabor de sangre, Glifo de Revancha, Gigante).
 - [ ] Ventana de opciones con iconos y sin comandos:
   - tamaño de las barras: grande, mediano, pequeño, extra pequeño;
   - posición de las barras;
