@@ -1,0 +1,10 @@
+## Interface: 30300
+## Title: |cffc79c6eWarriorReady|r
+## Notes: Muestra en grande los iconos de las habilidades del guerrero que estan listas (ignora el GCD).
+## Author: hernandomiguel
+## Version: 0.1.0
+## SavedVariables: WarriorReadyDB
+
+Spells.lua
+Core.lua
+Options.lua
