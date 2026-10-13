@@ -90,7 +90,8 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - **Pestañas** en la ventana: General (activar/desactivar) y Habilidades (iconos).
 - **Seleccionar/Deseleccionar todos** por sección (Ofensivas, Defensivas, Procs). El texto cambia según haya al menos una activa o ninguna.
 - **Pestañas verticales** a la izquierda: General, Habilidades, Tamaños.
-- **Tamaños:** XS (32), S (44), M (60) y L (80) para el aviso grande y cada barra. Se aplica al momento con vista previa de 5 s.
+- **Tamaños:** deslizador de 4 posiciones XS (32), S (44), M (60) y L (80) para el aviso grande y cada barra. Se aplica al momento con vista previa de 5 s.
+- **Posición:** botón Mover/Fijar barras (mientras se mueven se ven todos los iconos), casilla Vertical y deslizador de alineación (Izquierda/Centro/Derecha o Arriba/Centro/Abajo) por cada barra y el aviso.
 - **Raciales** añadidas a la barra defensiva (Furia sangrienta, Rabiar, Pisotón de guerra, Voluntad de los Renegados, Cada hombre por sí mismo, Forma de piedra, Artista del escape, Ofrenda de los naaru, Fusión de las sombras).
 
 ## Pendiente
@@ -103,9 +104,9 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - [x] Mostrar los procs en el aviso grande mientras están activos (Espada y escudo, Oleada sangrienta, Muerte súbita, Sabor de sangre, Glifo de Revancha, Gigante).
 - [ ] Ventana de opciones con iconos y sin comandos:
   - [x] tamaño de las barras: grande, mediano, pequeño, extra pequeño;
-  - posición de las barras;
-  - dirección horizontal o vertical;
-  - alineación: izquierda, derecha, arriba, abajo, centro y las cuatro esquinas;
+  - [x] posición de las barras;
+  - [x] dirección horizontal o vertical;
+  - [x] alineación: izquierda, centro, derecha / arriba, centro, abajo;
   - [x] elegir qué habilidades rastrear.
 - [ ] Tercera barra de habilidades favoritas.
 - [ ] Perfiles de configuración guardados.

@@ -16,7 +16,16 @@ local TAB_DEFS = {
     { key = "general", label = "General" },
     { key = "spells",  label = "Habilidades" },
     { key = "sizes",   label = "Tamaños" },
+    { key = "position", label = "Posición" },
 }
+
+local ALIGNS = { "start", "center", "end" }
+local ALIGN_LABELS = {
+    H = { "Izquierda", "Centro", "Derecha" },
+    V = { "Arriba", "Centro", "Abajo" },
+}
+local positionControls = {}  -- [grupo] = { check = ..., slider = ... }
+local moveButton
 
 local SIZE_PRESETS = {
     { label = "XS", name = "Extra pequeño", size = 32 },
@@ -236,6 +245,90 @@ local function BuildSizesPage(page)
 end
 
 ---------------------------------------------------------------------------
+-- Pestana Posicion
+---------------------------------------------------------------------------
+
+local function AlignIndex(align)
+    for i, a in ipairs(ALIGNS) do
+        if a == align then return i end
+    end
+    return 2
+end
+
+local function SetAlignText(slider, dir, i)
+    local labels = ALIGN_LABELS[dir]
+    _G[slider:GetName() .. "Low"]:SetText(labels[1])
+    _G[slider:GetName() .. "High"]:SetText(labels[3])
+    _G[slider:GetName() .. "Text"]:SetText("Alineación: " .. labels[i])
+end
+
+local function UpdatePositionControls()
+    local db = ns.GetDB()
+    for g, c in pairs(positionControls) do
+        local cfg = db.groups[g]
+        local i = AlignIndex(cfg.align)
+        c.check:SetChecked(cfg.dir == "V")
+        c.slider.updating = true
+        c.slider:SetValue(i)
+        c.slider.updating = false
+        SetAlignText(c.slider, cfg.dir, i)
+    end
+    moveButton:SetText(db.locked and "Mover barras" or "Fijar barras")
+end
+
+local function BuildPositionPage(page)
+    local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
+    help:SetText("Pulsa Mover barras y arrástralas. Al cambiar algo se ve una vista previa.")
+
+    moveButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    moveButton:SetWidth(140); moveButton:SetHeight(22)
+    moveButton:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 20)
+    moveButton:SetScript("OnClick", function()
+        ns.SetLocked(not ns.GetDB().locked)
+        UpdatePositionControls()
+    end)
+
+    local y = CONTENT_TOP - 80
+    for _, grp in ipairs(SIZE_GROUPS) do
+        local label = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        label:SetPoint("TOPLEFT", PAD, y - 2)
+        label:SetText(grp.label)
+
+        local check = CreateFrame("CheckButton", "WarriorReadyVertical_" .. grp.key, page, "UICheckButtonTemplate")
+        check:SetWidth(24); check:SetHeight(24)
+        check:SetPoint("TOPLEFT", PAD - 4, y - 16)
+        _G[check:GetName() .. "Text"]:SetText("Vertical")
+        check:SetScript("OnClick", function(self)
+            ns.GetDB().groups[grp.key].dir = self:GetChecked() and "V" or "H"
+            ns.ApplyGroup(grp.key)
+            ns.StartTest()
+            UpdatePositionControls()
+        end)
+
+        local s = CreateFrame("Slider", "WarriorReadyAlignSlider_" .. grp.key, page, "OptionsSliderTemplate")
+        s:SetWidth(200)
+        s:SetPoint("TOPLEFT", PAD + 140, y)
+        s:SetMinMaxValues(1, #ALIGNS)
+        s:SetValueStep(1)
+        s:SetScript("OnValueChanged", function(self, value)
+            local i = math.floor(value + 0.5)
+            local cfg = ns.GetDB().groups[grp.key]
+            SetAlignText(self, cfg.dir, i)
+            if self.updating then return end
+            if cfg.align ~= ALIGNS[i] then
+                cfg.align = ALIGNS[i]
+                ns.StartTest()
+            end
+        end)
+
+        positionControls[grp.key] = { check = check, slider = s }
+        y = y - 60
+    end
+    page.height = -y + 20
+end
+
+---------------------------------------------------------------------------
 -- Ventana de opciones
 ---------------------------------------------------------------------------
 
@@ -341,11 +434,13 @@ local function CreateWindow()
     help:SetText("Clic en un icono para activarlo o desactivarlo.")
 
     BuildSizesPage(pages.sizes)
+    BuildPositionPage(pages.position)
 
     f:SetScript("OnShow", function()
         enableCheck:SetChecked(ns.GetDB().enabled)
         BuildSpellList()
         UpdateSizeButtons()
+        UpdatePositionControls()
         ns.SelectTab(ns.GetDB().optionsTab or "general")
     end)
 end

@@ -15,9 +15,9 @@ local defaults = {
     popTime = 2,
     spacing = 6,
     groups = {
-        main = { size = 80, max = 8,  point = "CENTER", relPoint = "CENTER", x = 0, y = -120 },
-        cd   = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -200 },
-        def  = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -252 },
+        main = { size = 80, max = 8,  point = "CENTER", relPoint = "CENTER", x = 0, y = -120, dir = "H", align = "center" },
+        cd   = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -200, dir = "H", align = "center" },
+        def  = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -252, dir = "H", align = "center" },
     },
     disabled = {},  -- [spellID] = true
     debug = false,
@@ -154,8 +154,12 @@ local function ApplyAnchor(g)
     local f, cfg = anchors[g], db.groups[g]
     f:ClearAllPoints()
     f:SetPoint(cfg.point, UIParent, cfg.relPoint, cfg.x, cfg.y)
-    f:SetWidth(cfg.size * 4 + db.spacing * 3)
-    f:SetHeight(cfg.size)
+    local long = cfg.size * 4 + db.spacing * 3
+    if cfg.dir == "V" then
+        f:SetWidth(cfg.size); f:SetHeight(long)
+    else
+        f:SetWidth(long); f:SetHeight(cfg.size)
+    end
 end
 
 local function CreateAnchor(g)
@@ -280,14 +284,31 @@ local function RenderProcs(now, visible)
     end
 end
 
+-- dir: "H" horizontal / "V" vertical
+-- align: "start" (izquierda/arriba), "center", "end" (derecha/abajo); el orden de prioridad se mantiene
 local function Layout(g, n)
-    local size, sp = db.groups[g].size, db.spacing
+    local cfg = db.groups[g]
+    local size, sp = cfg.size, db.spacing
+    local step = size + sp
     local total = n * size + (n - 1) * sp
+    local vertical = cfg.dir == "V"
     for i = 1, n do
         local b = buttons[g][i]
         SizeButton(b, size)
         b:ClearAllPoints()
-        b:SetPoint("CENTER", anchors[g], "CENTER", (i - 1) * (size + sp) - total / 2 + size / 2, 0)
+        local point, off
+        if cfg.align == "start" then
+            point, off = vertical and "TOP" or "LEFT", (i - 1) * step
+        elseif cfg.align == "end" then
+            point, off = vertical and "BOTTOM" or "RIGHT", -(n - i) * step
+        else
+            point, off = "CENTER", (i - 1) * step - total / 2 + size / 2
+        end
+        if vertical then
+            b:SetPoint(point, anchors[g], point, 0, -off)
+        else
+            b:SetPoint(point, anchors[g], point, off, 0)
+        end
     end
 end
 
@@ -307,6 +328,7 @@ end
 local function Render()
     local now = GetTime()
     if testMode and now > testUntil then testMode = false end
+    local preview = testMode or not db.locked  -- mientras se mueven las barras se ve todo
     local visible = db.enabled
         and (testMode or not db.locked or not db.onlyCombat or UnitAffectingCombat("player"))
     counts.main, counts.cd, counts.def = 0, 0, 0
@@ -314,7 +336,7 @@ local function Render()
 
     for _, s in ipairs(known) do
         local state
-        if testMode then state = "ready" else state = GetState(s, now) end
+        if preview then state = "ready" else state = GetState(s, now) end
 
         -- Recien disponible: lanzar aviso grande (no en la primera lectura ni justo tras cambiar de postura)
         if state and not s.lastState and s.seen and now > quietUntil then s.popT = now end
@@ -332,7 +354,7 @@ local function Render()
                 SetButton(GetButton(bar, counts[bar]), s, state)
             end
             local age = s.popT and now - s.popT
-            if testMode then age = FLASH_TIME end  -- vista previa: aviso grande fijo
+            if preview then age = FLASH_TIME end  -- vista previa: aviso grande fijo
             if age and age < db.popTime and counts.main < db.groups.main.max then
                 counts.main = counts.main + 1
                 local b = GetButton("main", counts.main)
@@ -455,6 +477,11 @@ ns.ApplyGroup = function(g) ApplyAnchor(g) end
 function ns.StartTest()
     testMode = true
     testUntil = GetTime() + TEST_TIME
+end
+
+function ns.SetLocked(locked)
+    db.locked = locked
+    ApplyLock()
 end
 
 function ns.SetEnabled(on)
