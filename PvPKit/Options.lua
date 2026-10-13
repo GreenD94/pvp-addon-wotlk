@@ -498,7 +498,7 @@ local function CreateWindow()
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", header, "TOP", 0, -14)
-    title:SetText("PvPKit")
+    title:SetText("PvP Kit")
 
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
@@ -677,7 +677,9 @@ end
 
 local function ShowTooltip(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("PvPKit")
+    GameTooltip:AddLine("PvP Kit")
+    local color = RAID_CLASS_COLORS[ns.class]
+    GameTooltip:AddLine("Clase: " .. UnitClass("player"), color.r, color.g, color.b)
     GameTooltip:AddLine(ns.GetDB().enabled and "|cff40ff40Activado|r" or "|cffff4040Desactivado|r")
     GameTooltip:AddLine("Clic izquierdo: opciones", 1, 1, 1)
     GameTooltip:AddLine("Clic derecho: activar/desactivar", 1, 1, 1)

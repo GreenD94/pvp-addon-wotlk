@@ -189,7 +189,7 @@ local function CreateAnchor(g)
 
     f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.label:SetPoint("BOTTOM", f, "TOP", 0, 2)
-    f.label:SetText("PvPKit - " .. GROUP_LABEL[g] .. " (arrastra para mover)")
+    f.label:SetText("PvP Kit - " .. GROUP_LABEL[g] .. " (arrastra para mover)")
 
     anchors[g] = f
     ApplyAnchor(g)
