@@ -56,9 +56,11 @@ local function Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cffc79c6ePvP Kit|r: " .. msg)
 end
 
--- Registro siempre activo (ultimas LOG_MAX lineas); se guarda en SavedVariables al hacer /reload o salir
-local function Log(msg)
-    if not root then return end
+-- Registro de diagnostico (ultimas LOG_MAX lineas, en SavedVariables al hacer /reload o salir).
+-- Apagado por defecto: se enciende poniendo PvPKitDB.debug = true en el archivo de SavedVariables.
+-- Los errores se guardan siempre, sin avisar en el chat.
+local function Log(msg, force)
+    if not root or not (root.debug or force) then return end
     local log = root.log
     log[#log + 1] = string.format("%.2f %s", GetTime(), msg)
     if #log > LOG_MAX then table.remove(log, 1) end
@@ -66,8 +68,8 @@ end
 ns.Log = Log
 
 local function LogError(msg)
-    Log("ERROR " .. tostring(msg))
-    Print("|cffff4040error:|r " .. tostring(msg))
+    Log("ERROR " .. tostring(msg), true)
+    if root and root.debug then Print("|cffff4040error:|r " .. tostring(msg)) end
 end
 ns.LogError = LogError
 
@@ -365,7 +367,7 @@ local function Render()
         -- Recien disponible: lanzar aviso grande (no en la primera lectura ni justo tras cambiar de postura)
         if state and not s.lastState and s.seen and now > quietUntil then s.popT = now end
         if not state then s.popT = nil end
-        if state ~= s.lastState and s.seen then
+        if root.debug and state ~= s.lastState and s.seen then
             Log(string.format("%s: %s -> %s%s | %s", s.name, tostring(s.lastState), tostring(state),
                 s.popT == now and " (aviso)" or "", Describe(s)))
         end

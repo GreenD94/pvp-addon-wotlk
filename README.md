@@ -32,6 +32,8 @@ Solo se muestran las habilidades que tu personaje conoce. Por defecto solo se ve
 
 ## Instalación
 
+Versión actual: **0.4.0** (WoW 3.3.5a, probado en NaerZone).
+
 Copia la carpeta `PvPKit` dentro de `<carpeta del juego>\Interface\AddOns\` y entra al juego (o escribe `/reload`).
 En la pantalla de personajes, en **AddOns**, marca "Cargar addons desactualizados" si hace falta.
 
@@ -55,13 +57,13 @@ Se usa `/pvpkit` para no chocar con `/wa` de WeakAuras.
 
 ## Diagnóstico
 
-WoW 3.3.5 no guarda los errores de Lua en un archivo. El addon guarda su propio registro, siempre activo (últimas 500 líneas):
+WoW 3.3.5 no guarda los errores de Lua en un archivo. El addon guarda su propio registro (últimas 500 líneas). Por defecto **solo guarda los errores**, sin avisar en el chat. Para el registro completo, con el juego cerrado, poner `["debug"] = true` en `PvPKitDB` dentro del archivo de SavedVariables:
 
 1. Jugar un rato.
 2. `/reload` (o salir del juego) para que se escriba en disco.
 3. Leer `WTF\Account\<CUENTA>\SavedVariables\PvPKit.lua`, en la sección `log`.
 
-Cada línea anota cuándo una habilidad cambia de estado y lo que dice el juego en ese momento (ira, cooldown, combate), y cada alerta nueva de aliados. Los errores del addon también se guardan ahí y se muestran en el chat.
+Con el registro completo, cada línea anota cuándo una habilidad cambia de estado y lo que dice el juego en ese momento (ira, cooldown, combate) y cada alerta nueva; los errores además se muestran en el chat.
 
 Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 
