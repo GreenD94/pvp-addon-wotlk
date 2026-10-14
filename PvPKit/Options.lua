@@ -269,6 +269,7 @@ local function SetSize(key, size)
     local db = ns.GetDB()
     if key == "alerts" then
         db.alertSize = size
+        ns.ApplyAlertsLock()
         ns.ShowDemo()  -- vista previa con la demostracion
     else
         db.groups[key].size = size

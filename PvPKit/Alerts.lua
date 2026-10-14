@@ -277,8 +277,26 @@ end
 
 local function Build()
     container = CreateFrame("Frame", "PvPKitAlerts", UIParent)
-    container:SetWidth(600); container:SetHeight(300)
+    container:SetWidth(700); container:SetHeight(300)
     container:SetPoint("CENTER", 0, 170)
+
+    -- Se arrastra con "Mover barras", igual que las barras
+    container:SetMovable(true)
+    container:SetClampedToScreen(true)
+    container:RegisterForDrag("LeftButton")
+    container:SetScript("OnDragStart", container.StartMoving)
+    container:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local point, _, relPoint, x, y = self:GetPoint()
+        local pos = ns.GetDB().alertPos
+        pos.point, pos.relPoint, pos.x, pos.y = point, relPoint, x, y
+    end)
+    container.bg = container:CreateTexture(nil, "BACKGROUND")
+    container.bg:SetAllPoints()
+    container.bg:SetTexture(0.78, 0.61, 0.43, 0.25)
+    container.label = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    container.label:SetPoint("BOTTOM", container, "TOP", 0, 2)
+    container.label:SetText("PvP Kit - Alertas (arrastra para mover)")
 
     banner = container:CreateFontString(nil, "OVERLAY")
     banner:SetFont(STANDARD_TEXT_FONT, 40, "THICKOUTLINE")
@@ -578,14 +596,16 @@ local elapsedSince = 0
 
 local function OnUpdate(_, elapsed)
     elapsedSince = elapsedSince + elapsed
-    if elapsedSince < SCAN_INTERVAL and not demoOn then return end
+    -- mientras se mueven las barras se ve la demostracion, para ver el tamano real
+    local showDemo = demoOn or not ns.GetDB().locked
+    if elapsedSince < SCAN_INTERVAL and not showDemo then return end
     elapsedSince = 0
 
     local size = AlertSize()
     PlaceRows(size)
 
     if demoOn and demoUntil and GetTime() > demoUntil then demoOn, demoUntil = false, nil end
-    if demoOn then
+    if showDemo then
         local t = GetTime() - demoStart
         for _, list in pairs(DEMO) do
             for _, a in ipairs(list) do
@@ -613,6 +633,7 @@ end
 -- Se llama al terminar de cargar (Core.lua)
 function ns.InitAlerts()
     Build()
+    ns.ApplyAlertsLock()
     local lastErr
 
     local events = CreateFrame("Frame")
@@ -637,6 +658,22 @@ function ns.InitAlerts()
             ns.LogError("alertas: " .. tostring(err))
         end
     end)
+end
+
+-- Posicion guardada y modo mover (llamado desde ApplyLock en Core.lua)
+function ns.ApplyAlertsLock()
+    if not container then return end
+    local db = ns.GetDB()
+    local pos = db.alertPos
+    container:ClearAllPoints()
+    container:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    container:SetHeight(50 + 2 * (CellHeight(AlertSize()) + 12))
+    container:EnableMouse(not db.locked)
+    if db.locked then
+        container.bg:Hide(); container.label:Hide()
+    else
+        container.bg:Show(); container.label:Show()
+    end
 end
 
 -- /pvpkit demo: demostracion fija hasta volver a escribirlo

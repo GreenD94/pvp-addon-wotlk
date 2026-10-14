@@ -23,6 +23,7 @@ local defaults = {
     disabled = {},  -- [spellID] = true
     -- Alertas JcJ (de momento solo se usan en la demostracion)
     alertSize = 60,
+    alertPos = { point = "CENTER", relPoint = "CENTER", x = 0, y = 170 },
     alerts = {
         ally  = { cc = true, debuff = true, health = true, healthPct = 30, focus = true },
         enemy = { cc = true, debuff = true, health = true, healthPct = 30, casts = true,
@@ -211,6 +212,7 @@ local function ApplyLock()
             f.bg:Show(); f.label:Show()
         end
     end
+    if ns.ApplyAlertsLock then ns.ApplyAlertsLock() end  -- las alertas se mueven igual que las barras
 end
 
 local function CreateButton(g)
