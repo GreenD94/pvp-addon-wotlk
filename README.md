@@ -34,7 +34,9 @@ Solo se muestran las habilidades que tu personaje conoce. Por defecto solo se ve
 
 Versión actual: **0.4.0** (WoW 3.3.5a, probado en NaerZone).
 
-Copia la carpeta `PvPKit` dentro de `<carpeta del juego>\Interface\AddOns\` y entra al juego (o escribe `/reload`).
+1. En GitHub: **Code → Download ZIP** y descomprímelo.
+2. Copia la carpeta `PvPKit` (está dentro de `pvp-addon-wotlk-main`) en `<carpeta del juego>\Interface\AddOns\`.
+3. Entra al juego. Si ya estaba abierto, ciérralo y vuelve a abrirlo.
 En la pantalla de personajes, en **AddOns**, marca "Cargar addons desactualizados" si hace falta.
 
 ## Comandos
