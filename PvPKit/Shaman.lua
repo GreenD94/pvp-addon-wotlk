@@ -1,7 +1,8 @@
 local _, ns = ...
 
--- Chaman. Mismo formato que Warrior.lua.
+-- Chaman. Mismo formato que Warrior.lua (las raciales estan en Racials.lua).
 -- Regla: si hace dano es ofensiva; si no, defensiva (def = true).
+-- kick = sirve para cortar lanzamientos (¡Cortalo!)
 local spells = {
     -- Ofensivas: hacen dano
     { id = 51505 },  -- Lava Burst
@@ -18,7 +19,7 @@ local spells = {
     { id = 2062 },   -- Earth Elemental Totem
 
     -- Defensivas: no hacen dano (control, curacion, totems de utilidad, potenciadores)
-    { id = 57994, def = true, cond = "interrupt" },  -- Wind Shear, solo si el objetivo castea algo interrumpible
+    { id = 57994, def = true, cond = "interrupt", kick = true },  -- Wind Shear
     { id = 8177,  def = true },  -- Grounding Totem
     { id = 2484,  def = true },  -- Earthbind Totem
     { id = 5730,  def = true },  -- Stoneclaw Totem
@@ -31,18 +32,13 @@ local spells = {
     { id = 16190, def = true },  -- Mana Tide Totem
     { id = 2825,  def = true },  -- Bloodlust (Horda)
     { id = 32182, def = true },  -- Heroism (Alianza)
-
-    -- Raciales
-    { id = 33697, def = true },  -- Blood Fury (orco, version de lanzador)
-    { id = 26297, def = true },  -- Berserking (trol)
-    { id = 20549, def = true },  -- War Stomp (tauren)
-    { id = 59547, def = true },  -- Gift of the Naaru (draenei, version de chaman)
 }
 
 -- minStacks = solo se muestra con al menos ese numero de acumulaciones
 local procs = {
     { id = 53817, minStacks = 5 },  -- Maelstrom Weapon (5 cargas: hechizo instantaneo)
     { id = 53390 },                 -- Tidal Waves (oleadas: sanacion mas rapida)
+    { id = 16246 },                 -- Clearcasting (Foco elemental: hechizos mas baratos)
 }
 
 ns.classes = ns.classes or {}

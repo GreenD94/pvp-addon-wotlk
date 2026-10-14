@@ -3,7 +3,7 @@
 Addon para **World of Warcraft 3.3.5a (WotLK)**, probado en el servidor NaerZone con cliente en español.
 Ayuda visual para JcJ: muestra qué habilidades están listas para usar y los procs activos, al estilo de WeakAuras pero sin configurar nada. Detecta la clase del personaje y carga su lista de habilidades.
 
-**Clases:** Guerrero (probado), Chamán (en prueba). Plan: probar cada función con estas dos clases y, al final, replicar para todas las demás.
+**Clases:** las 10 de WotLK. Guerrero (probado), Chamán (en prueba) y Mago, Sacerdote, Pícaro, Druida, Paladín, Cazador, Brujo y Caballero de la Muerte (listas hechas, sin probar). Las raciales son comunes a todas (`Racials.lua`).
 
 ## Qué hace
 
@@ -68,7 +68,8 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 ## Archivos
 
 - `PvPKit.toc`: metadatos del addon (Interface 30300).
-- `Warrior.lua`, `Shaman.lua`: una por clase. Lista de habilidades (orden de prioridad, barra y condiciones) y procs, registradas en `ns.classes[CLASE]`. Para añadir una clase basta con crear su archivo y añadirlo al `.toc`.
+- `Warrior.lua`, `Shaman.lua`, `Mage.lua`, `Priest.lua`, `Rogue.lua`, `Druid.lua`, `Paladin.lua`, `Hunter.lua`, `Warlock.lua`, `DeathKnight.lua`: una por clase. Lista de habilidades (orden de prioridad, barra, condiciones, `kick` = sirve para ¡Córtalo!) y procs, registradas en `ns.classes[CLASE]`.
+- `Racials.lua`: raciales comunes, se añaden al final de la lista de cada clase.
 - `Core.lua`: lógica, dibujo, comandos y registro.
 - `Alerts.lua`: alertas JcJ (por ahora solo el modo demostración).
 - `Options.lua`: botón del minimapa (clic izquierdo abre la ventana, clic derecho activa/desactiva, arrastrar lo mueve) y ventana de opciones.
@@ -119,7 +120,8 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - [x] Barra de habilidades favoritas.
 - [x] Perfiles de configuración guardados.
 - [x] Detección automática de clase (guerrero y chamán).
-- [ ] Replicar para todas las clases (al final, cuando todo esté probado).
+- [x] Replicar para todas las clases: listas de las 10 clases hechas (por probar en el juego cada una). Las habilidades de mascota (Bloqueo de hechizo, etc.) no se rastrean porque no están en el libro del jugador.
+- [ ] Elegir la clase a mano (ahora solo detección automática).
 ### Alertas JcJ (objetivo: ventaja en arena)
 
 Vista elegida: **opción A**, iconos grandes en el centro con el nombre del jugador. Se configura en una pestaña **Alertas** con dos secciones, Aliados y Enemigos. Primero se hace un **modo demostración** (`/pvpkit demo`) con datos inventados para revisar la experiencia de uso; después, los datos reales.

@@ -1,12 +1,21 @@
 ## Interface: 30300
 ## Title: |cffc79c6ePvP Kit|r
-## Notes: Muestra en grande las habilidades listas para usar y los procs activos (ignora el GCD).
+## Notes: Muestra en grande las habilidades listas para usar, los procs activos y alertas JcJ (ignora el GCD).
 ## Author: hernandomiguel
-## Version: 0.2.0
+## Version: 0.3.0
 ## SavedVariables: PvPKitDB
 
+Racials.lua
 Warrior.lua
 Shaman.lua
+Mage.lua
+Priest.lua
+Rogue.lua
+Druid.lua
+Paladin.lua
+Hunter.lua
+Warlock.lua
+DeathKnight.lua
 Core.lua
 Alerts.lua
 Options.lua

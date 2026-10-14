@@ -628,7 +628,9 @@ driver:SetScript("OnEvent", function(self, event)
             return
         end
         ns.class, ns.classIcon = class, data.icon
-        ns.spells, ns.procs = data.spells, data.procs
+        ns.spells, ns.procs = {}, data.procs
+        for _, s in ipairs(data.spells) do ns.spells[#ns.spells + 1] = s end
+        for _, s in ipairs(ns.RACIALS) do ns.spells[#ns.spells + 1] = s end
         InitRoot()
 
         CreateAnchor("main")

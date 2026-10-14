@@ -516,11 +516,11 @@ local function OnCombatLog(...)
     end
 end
 
--- Primer corte del jugador que este listo y a rango de esa unidad (las habilidades
--- de la clase con cond = "interrupt": Golpe con escudo, Zurrar, Corte de viento...)
+-- Primer corte del jugador que este listo y a rango de esa unidad (habilidades con kick = true
+-- o cond = "interrupt": Golpe con escudo, Zurrar, Corte de viento, Contrahechizo...)
 local function ReadyInterrupt(unit, now)
     for _, s in ipairs(ns.GetKnown()) do
-        if s.cond == "interrupt" then
+        if s.kick or s.cond == "interrupt" then
             local usable = IsUsableSpell(s.name)
             local start, duration = GetSpellCooldown(s.name)
             local offCooldown = start and (duration <= 1.5 or start + duration <= now)
