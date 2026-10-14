@@ -387,7 +387,7 @@ end
 local function BuildAlertsPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Aliados: ya funciona en grupo, banda y campo de batalla.\nEnemigos: próximamente.")
+    help:SetText("Aliados: grupo, banda y campo de batalla. Enemigos: controles de tu\ngrupo con DR, abalorio e inmunidades (objetivo, foco o arena).")
 
     local lowest = 0
     for col, sec in ipairs(ALERT_SECTIONS) do
