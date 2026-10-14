@@ -6,7 +6,7 @@ local _, ns = ...
 -- Cada alerta: nombre (color de clase) arriba; cara del jugador + icono del efecto;
 -- texto y barra de duracion debajo. Sin cara disponible se usa el emblema de la clase.
 
-local SCAN_INTERVAL = 0.2  -- segundos entre lecturas de los aliados
+local SCAN_INTERVAL = 0.1  -- segundos entre lecturas (aliados, enemigos y lanzamientos)
 local MAX_ALERTS = 6       -- alertas como maximo por fila
 local DEMO_CYCLE = 12      -- la demo se repite cada N segundos
 local HEALTH_ICON = "Interface\\Icons\\Spell_Holy_AshesToAshes"
@@ -19,9 +19,10 @@ local BORDER_COLORS = {
     trinket = { 0.60, 0.60, 0.60 },  -- abalorio usado: gris
     cast    = { 0.30, 0.60, 1.00 },  -- lanzando: azul
     dr      = { 0.40, 0.50, 0.70 },  -- rendimiento decreciente pendiente: gris azulado
+    kick    = { 1.00, 0.50, 0.00 },  -- ¡cortalo!: naranja
 }
 -- orden dentro de cada fila
-local KIND_ORDER = { cc = 1, health = 2, debuff = 3, immune = 4, dr = 5, trinket = 6 }
+local KIND_ORDER = { kick = 0, cast = 0.5, cc = 1, health = 2, debuff = 3, immune = 4, dr = 5, trinket = 6 }
 
 ---------------------------------------------------------------------------
 -- Controles y perjuicios de JcJ (todas las clases). Se comparan por nombre
@@ -353,8 +354,8 @@ local function Render(row, list, t, size)
         else
             c.bar:Hide()
         end
-        -- la vida baja late para llamar la atencion
-        if a.kind == "health" then
+        -- la vida baja y ¡cortalo! laten para llamar la atencion
+        if a.kind == "health" or a.kind == "kick" then
             c:SetAlpha(0.6 + 0.4 * math.abs(math.sin(t * 4)))
         else
             c:SetAlpha(1)
@@ -515,6 +516,57 @@ local function OnCombatLog(...)
     end
 end
 
+-- Primer corte del jugador que este listo y a rango de esa unidad (las habilidades
+-- de la clase con cond = "interrupt": Golpe con escudo, Zurrar, Corte de viento...)
+local function ReadyInterrupt(unit, now)
+    for _, s in ipairs(ns.GetKnown()) do
+        if s.cond == "interrupt" then
+            local usable = IsUsableSpell(s.name)
+            local start, duration = GetSpellCooldown(s.name)
+            local offCooldown = start and (duration <= 1.5 or start + duration <= now)
+            if usable and offCooldown and IsSpellInRange(s.name, unit) == 1 then return s end
+        end
+    end
+end
+
+local kicksSeen = {}  -- para anotar en el registro solo los nuevos
+
+-- Lanzamientos de objetivo, foco y arena (tambien PNJ, util para probar en el mundo)
+local function ScanCasts(list, cfg, now)
+    if not (cfg.casts or cfg.kick) then return end
+    local done, current = {}, {}
+    for _, unit in ipairs(ENEMY_UNITS) do
+        local guid = UnitGUID(unit)
+        if guid and not done[guid] and UnitCanAttack("player", unit) then
+            done[guid] = true
+            local spell, _, _, icon, startMs, endMs, _, _, notInterruptible = UnitCastingInfo(unit)
+            if not spell then
+                spell, _, _, icon, startMs, endMs, _, notInterruptible = UnitChannelInfo(unit)
+            end
+            if spell then
+                local total = (endMs - startMs) / 1000
+                local value = total > 0 and (endMs / 1000 - now) / total or nil
+                local _, class = UnitClass(unit)
+                local base = { name = UnitName(unit), class = class, unit = unit, icon = icon, value = value }
+                local kick = not notInterruptible and cfg.kick and ReadyInterrupt(unit, now)
+                if kick then
+                    base.kind = "kick"
+                    base.label = "¡CÓRTALO! " .. spell .. " (" .. kick.name .. ")"
+                    local key = guid .. spell
+                    current[key] = true
+                    if not kicksSeen[key] then ns.Log("córtalo: " .. tostring(base.name) .. " - " .. spell) end
+                    list[#list + 1] = base
+                elseif cfg.casts then
+                    base.kind = "cast"
+                    base.label = notInterruptible and (spell .. " (no se puede cortar)") or ("Lanzando " .. spell)
+                    list[#list + 1] = base
+                end
+            end
+        end
+    end
+    kicksSeen = current
+end
+
 local function ScanEnemies()
     local cfg = ns.GetDB().alerts.enemy
     local now = GetTime()
@@ -582,6 +634,8 @@ local function ScanEnemies()
         end
     end
 
+    ScanCasts(list, cfg, now)
+
     table.sort(list, function(a, b) return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end)
     for i = #list, MAX_ALERTS + 1, -1 do list[i] = nil end
     return list
@@ -625,7 +679,7 @@ local function OnUpdate(_, elapsed)
     end
 
     banner:Hide()
-    local enabled = ns.GetDB().enabled
+    local enabled = ns.GetDB().enabled and ns.GetDB().features.alerts
     Render(rows.ally, enabled and ScanAllies() or EMPTY, GetTime(), size)
     Render(rows.enemy, enabled and ScanEnemies() or EMPTY, GetTime(), size)
 end

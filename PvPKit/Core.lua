@@ -22,12 +22,14 @@ local defaults = {
     },
     disabled = {},  -- [spellID] = true
     -- Alertas JcJ (de momento solo se usan en la demostracion)
+    -- Funciones que se pueden apagar por completo (pestana General)
+    features = { pop = true, procs = true, bar_cd = true, bar_def = true, bar_fav = true, alerts = true },
     alertSize = 60,
     alertPos = { point = "CENTER", relPoint = "CENTER", x = 0, y = 170 },
     alerts = {
         ally  = { cc = true, debuff = true, health = true, healthPct = 30, focus = true },
         enemy = { cc = true, debuff = true, health = true, healthPct = 30, casts = true,
-                  trinket = true, immune = true, killWindow = true },
+                  trinket = true, immune = true, killWindow = true, kick = true },
     },
     favorites = {}, -- [spellID] = true: va a la barra de favoritas en vez de la suya
 }
@@ -282,6 +284,7 @@ local counts = { main = 0, cd = 0, def = 0, fav = 0 }
 
 -- Procs: en el aviso grande mientras dure el buff
 local function RenderProcs(now, visible)
+    if not db.features.procs then return end
     for _, p in ipairs(ns.procs) do
         local name, _, icon, count
         if p.name and not db.disabled[p.id] then name, _, icon, count = UnitBuff("player", p.name) end
@@ -369,13 +372,13 @@ local function Render()
 
         if visible and state then
             local bar = db.favorites[s.id] and "fav" or (s.def and "def" or "cd")
-            if counts[bar] < db.groups[bar].max then
+            if db.features["bar_" .. bar] and counts[bar] < db.groups[bar].max then
                 counts[bar] = counts[bar] + 1
                 SetButton(GetButton(bar, counts[bar]), s, state)
             end
             local age = s.popT and now - s.popT
             if preview then age = FLASH_TIME end  -- vista previa: aviso grande fijo
-            if age and age < db.popTime and counts.main < db.groups.main.max then
+            if db.features.pop and age and age < db.popTime and counts.main < db.groups.main.max then
                 counts.main = counts.main + 1
                 local b = GetButton("main", counts.main)
                 SetButton(b, s, state)

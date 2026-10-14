@@ -24,19 +24,32 @@ local ALERT_SECTIONS = {
         { key = "cc",     label = "Control (CC)" },
         { key = "debuff", label = "Perjuicios importantes" },
         { key = "health", label = "Vida baja" },
-        { key = "focus",  label = "Lo están enfocando" },
+        { key = "focus",  label = "Lo enfocan", soon = true },
     } },
     { key = "enemy", title = "Enemigos", color = { 1, 0.3, 0.3 }, options = {
         { key = "cc",         label = "Control (CC) y DR" },
-        { key = "debuff",     label = "Perjuicios" },
-        { key = "health",     label = "Vida baja" },
         { key = "casts",      label = "Hechizo que lanza" },
+        { key = "kick",       label = "¡Córtalo!" },
         { key = "trinket",    label = "Abalorio JcJ" },
         { key = "immune",     label = "Inmunidades" },
-        { key = "killWindow", label = "¡AHORA! (ventana)" },
+        { key = "debuff",     label = "Perjuicios", soon = true },
+        { key = "health",     label = "Vida baja", soon = true },
+        { key = "killWindow", label = "¡AHORA!", soon = true },
     } },
 }
-local alertControls = {}  -- { check o slider, seccion, opcion }
+local allyHealthSlider
+
+-- Funciones que se pueden apagar por completo (pestana General)
+local FEATURES = {
+    { key = "pop",     label = "Aviso grande al quedar lista una habilidad" },
+    { key = "procs",   label = "Procs en el aviso grande" },
+    { key = "bar_cd",  label = "Barra ofensiva" },
+    { key = "bar_def", label = "Barra defensiva" },
+    { key = "bar_fav", label = "Barra de favoritas" },
+    { key = "alerts",  label = "Alertas JcJ (aliados y enemigos)" },
+}
+
+local checkLists = {}  -- listas de casillas con boton Seleccionar/Deseleccionar todos
 
 local profileTabs, createProfileButtons = {}, {}  -- pestanas de perfil y botones Nuevo/Copiar
 local currentProfileLabel, deleteProfileButton, countLabel
@@ -367,67 +380,120 @@ local function BuildPositionPage(page)
 end
 
 ---------------------------------------------------------------------------
--- Pestana Alertas (de momento solo afecta a la demostracion)
+-- Pestana Alertas y listas de casillas
 ---------------------------------------------------------------------------
 
-local function UpdateAlertControls()
-    local alerts = ns.GetDB().alerts
-    for _, c in ipairs(alertControls) do
-        local value = alerts[c.section][c.option]
-        if c.isSlider then
-            c.widget.updating = true
-            c.widget:SetValue(value)
-            c.widget.updating = false
-            _G[c.widget:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
-        else
-            c.widget:SetChecked(value)
+-- Lista de casillas con titulo y boton "Seleccionar todos" / "Deseleccionar todos".
+-- items: { label, get(), set(valor), soon }. Las "soon" (aun no hechas) salen grises y desactivadas.
+local function CreateCheckList(page, prefix, x, y, width, title, color, items)
+    local list = { checks = {} }
+
+    local t = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    t:SetPoint("TOPLEFT", x, y)
+    t:SetText(title)
+    if color then t:SetTextColor(unpack(color)) end
+
+    local toggle = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    toggle:SetWidth(130); toggle:SetHeight(20)
+    toggle:SetPoint("TOPLEFT", x + width - 130, y + 4)
+
+    local function AnyOn()
+        for _, it in ipairs(items) do
+            if not it.soon and it.get() then return true end
         end
+        return false
+    end
+
+    function list.Update()
+        for i, it in ipairs(items) do
+            if not it.soon then list.checks[i]:SetChecked(it.get()) end
+        end
+        toggle:SetText(AnyOn() and "Deseleccionar todos" or "Seleccionar todos")
+    end
+
+    toggle:SetScript("OnClick", function()
+        local value = not AnyOn()
+        for _, it in ipairs(items) do
+            if not it.soon then it.set(value) end
+        end
+        list.Update()
+    end)
+
+    y = y - 22
+    for i, it in ipairs(items) do
+        local check = CreateFrame("CheckButton", prefix .. i, page, "UICheckButtonTemplate")
+        check:SetWidth(24); check:SetHeight(24)
+        check:SetPoint("TOPLEFT", x - 4, y)
+        local text = _G[check:GetName() .. "Text"]
+        if it.soon then
+            text:SetText(it.label .. " (pronto)")
+            text:SetTextColor(0.5, 0.5, 0.5)
+            check:Disable()
+        else
+            text:SetText(it.label)
+            check:SetScript("OnClick", function(self)
+                it.set(self:GetChecked() and true or false)
+                list.Update()
+            end)
+        end
+        list.checks[i] = check
+        y = y - 24
+    end
+
+    checkLists[#checkLists + 1] = list
+    return list, y
+end
+
+local function UpdateCheckLists()
+    for _, list in ipairs(checkLists) do list.Update() end
+    if allyHealthSlider then
+        local value = ns.GetDB().alerts.ally.healthPct
+        allyHealthSlider.updating = true
+        allyHealthSlider:SetValue(value)
+        allyHealthSlider.updating = false
+        _G[allyHealthSlider:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
     end
 end
 
 local function BuildAlertsPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Aliados: grupo, banda y campo de batalla. Enemigos: controles de tu\ngrupo con DR, abalorio e inmunidades (objetivo, foco o arena).")
+    help:SetText("Apaga lo que no quieras ver. ¡Córtalo! avisa si tu corte está listo\ny a rango cuando tu objetivo, foco o enemigo de arena lanza algo.")
 
     local lowest = 0
     for col, sec in ipairs(ALERT_SECTIONS) do
-        local x = PAD + (col - 1) * 190
-        local title = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        title:SetPoint("TOPLEFT", x, CONTENT_TOP - 56)
-        title:SetText(sec.title)
-        title:SetTextColor(unpack(sec.color))
-
-        local y = CONTENT_TOP - 74
+        local x = PAD + (col - 1) * 192
+        local items = {}
         for _, opt in ipairs(sec.options) do
-            local check = CreateFrame("CheckButton", "PvPKitAlert_" .. sec.key .. "_" .. opt.key, page, "UICheckButtonTemplate")
-            check:SetWidth(24); check:SetHeight(24)
-            check:SetPoint("TOPLEFT", x - 4, y)
-            _G[check:GetName() .. "Text"]:SetText(opt.label)
-            check:SetScript("OnClick", function(self)
-                ns.GetDB().alerts[sec.key][opt.key] = self:GetChecked() and true or false
-            end)
-            alertControls[#alertControls + 1] = { widget = check, section = sec.key, option = opt.key }
-            y = y - 24
+            items[#items + 1] = {
+                label = opt.label, soon = opt.soon,
+                get = function() return ns.GetDB().alerts[sec.key][opt.key] end,
+                set = function(v) ns.GetDB().alerts[sec.key][opt.key] = v end,
+            }
         end
+        local _, y = CreateCheckList(page, "PvPKitAlert_" .. sec.key .. "_", x, CONTENT_TOP - 44, 182,
+            sec.title, sec.color, items)
 
-        -- Umbral de vida baja
-        local s = CreateFrame("Slider", "PvPKitAlertHealth_" .. sec.key, page, "OptionsSliderTemplate")
-        s:SetWidth(150)
-        s:SetPoint("TOPLEFT", x, y - 22)
-        s:SetMinMaxValues(10, 50)
-        s:SetValueStep(5)
-        _G[s:GetName() .. "Low"]:SetText("10%")
-        _G[s:GetName() .. "High"]:SetText("50%")
-        s:SetScript("OnValueChanged", function(self, value)
-            value = math.floor(value / 5 + 0.5) * 5
-            _G[self:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
-            if not self.updating then ns.GetDB().alerts[sec.key].healthPct = value end
-        end)
-        alertControls[#alertControls + 1] = { widget = s, section = sec.key, option = "healthPct", isSlider = true }
-        lowest = math.min(lowest, y - 60)
+        -- Umbral de vida baja (solo aliados por ahora)
+        if sec.key == "ally" then
+            local s = CreateFrame("Slider", "PvPKitAlertHealth_ally", page, "OptionsSliderTemplate")
+            s:SetWidth(150)
+            s:SetPoint("TOPLEFT", x, y - 22)
+            s:SetMinMaxValues(10, 50)
+            s:SetValueStep(5)
+            _G[s:GetName() .. "Low"]:SetText("10%")
+            _G[s:GetName() .. "High"]:SetText("50%")
+            s:SetScript("OnValueChanged", function(self, value)
+                value = math.floor(value / 5 + 0.5) * 5
+                _G[self:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
+                if not self.updating then ns.GetDB().alerts.ally.healthPct = value end
+            end)
+            allyHealthSlider = s
+            y = y - 60
+        end
+        lowest = math.min(lowest, y)
     end
-    page.height = -lowest + 20
+    page.height = -lowest + 30
 end
 
 ---------------------------------------------------------------------------
@@ -671,7 +737,6 @@ local function CreateWindow()
 
     -- Pestana General
     local general = pages.general
-    general.height = 150
     enableCheck = CreateFrame("CheckButton", "PvPKitOptionsEnable", general, "UICheckButtonTemplate")
     enableCheck:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
     _G[enableCheck:GetName() .. "Text"]:SetText("Activar PvP Kit")
@@ -679,9 +744,21 @@ local function CreateWindow()
         ns.SetEnabled(self:GetChecked() and true or false)
     end)
 
+    -- Funciones: cada una se puede apagar para no saturar la pantalla
+    local items = {}
+    for _, feat in ipairs(FEATURES) do
+        items[#items + 1] = {
+            label = feat.label,
+            get = function() return ns.GetDB().features[feat.key] end,
+            set = function(v) ns.GetDB().features[feat.key] = v end,
+        }
+    end
+    local _, y = CreateCheckList(general, "PvPKitFeature", PAD, CONTENT_TOP - 40, 356, "Funciones", nil, items)
+
     local reset = CreateFrame("Button", nil, general, "UIPanelButtonTemplate")
     reset:SetWidth(200); reset:SetHeight(22)
-    reset:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 40)
+    reset:SetPoint("TOPLEFT", PAD, y - 14)
+    general.height = -(y - 14) + 70
     reset:SetText("Restaurar configuración")
     reset:SetScript("OnClick", function() StaticPopup_Show("PVPKIT_RESET") end)
 
@@ -712,7 +789,7 @@ function RefreshWindow(tab)
     UpdateSizeButtons()
     UpdatePositionControls()
     BuildProfileList()
-    UpdateAlertControls()
+    UpdateCheckLists()
     sidebarProfileLabel:SetText("Perfil:\n|cffffd100" .. ns.GetCurrentProfile() .. "|r")
     ns.SelectTab(tab or "general")
 end
