@@ -7,7 +7,7 @@ local _, ns = ...
 -- texto y barra de duracion debajo. Sin cara disponible se usa el emblema de la clase.
 
 local SCAN_INTERVAL = 0.1  -- segundos entre lecturas (aliados, enemigos y lanzamientos)
-local MAX_ALERTS = 6       -- alertas como maximo por fila
+local MAX_ALERTS = 8       -- alertas como maximo por fila
 local DEMO_CYCLE = 12      -- la demo se repite cada N segundos
 local HEALTH_ICON = "Interface\\Icons\\Spell_Holy_AshesToAshes"
 local CLASS_EMBLEMS = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
@@ -20,9 +20,15 @@ local BORDER_COLORS = {
     cast    = { 0.30, 0.60, 1.00 },  -- lanzando: azul
     dr      = { 0.40, 0.50, 0.70 },  -- rendimiento decreciente pendiente: gris azulado
     kick    = { 1.00, 0.50, 0.00 },  -- ¡cortalo!: naranja
+    focus   = { 1.00, 0.40, 0.10 },  -- lo enfocan: rojo anaranjado
+    ecd     = { 0.20, 0.70, 0.70 },  -- cooldown del enemigo usado: turquesa
+    purge   = { 0.40, 0.80, 1.00 },  -- purgable: celeste
+    drink   = { 0.30, 0.40, 1.00 },  -- bebiendo: azul
+    totem   = { 0.20, 0.80, 0.30 },  -- totem enemigo: verde
 }
 -- orden dentro de cada fila
-local KIND_ORDER = { kick = 0, cast = 0.5, cc = 1, health = 2, debuff = 3, immune = 4, dr = 5, trinket = 6 }
+local KIND_ORDER = { kick = 0, cast = 0.5, cc = 1, focus = 1.5, health = 2, debuff = 3, immune = 4,
+    purge = 4.5, ecd = 4.6, drink = 4.7, totem = 4.8, dr = 5, trinket = 6 }
 
 ---------------------------------------------------------------------------
 -- Controles y perjuicios de JcJ (todas las clases). Se comparan por nombre
@@ -142,8 +148,54 @@ local TRINKET_CD = 120
 local DR_RESET = 18
 local DR_NEXT = { "½", "¼", "inmune" }
 
+-- Cooldowns del enemigo que conviene saber si ya uso: [id] = segundos de cooldown
+local ENEMY_COOLDOWN_SPELLS = {
+    -- Cortes
+    [6552] = 10, [72] = 12, [1766] = 10, [2139] = 24, [57994] = 6, [47528] = 10,
+    [47476] = 120, [34490] = 20, [15487] = 45, [16979] = 15,
+    -- Defensivos y escapes
+    [642] = 300, [45438] = 300, [31224] = 90, [33206] = 180, [1022] = 300, [1044] = 25,
+    [19263] = 90, [5277] = 180, [1856] = 180, [48707] = 45, [48792] = 120, [22812] = 60,
+    [871] = 300, [12975] = 180, [47585] = 120, [498] = 180, [633] = 1200, [47788] = 180,
+    [46924] = 90, [23920] = 10, [1953] = 15, [5384] = 30, [2983] = 180, [36554] = 30,
+    [48020] = 30,
+    -- Controles con cooldown largo
+    [853] = 60, [2094] = 180, [8122] = 30, [5484] = 40, [46968] = 20, [5246] = 120,
+    [44572] = 30, [408] = 20, [51514] = 45, [20066] = 60, [5211] = 60, [6789] = 120,
+    [64044] = 120, [1499] = 30, [19503] = 30, [19386] = 60, [31661] = 20, [49203] = 60,
+    [30283] = 20, [12809] = 30,
+}
+
+-- Totems enemigos que cambian la pelea: [id] = { texto, duracion maxima }
+local TOTEM_SPELLS = {
+    [8143]  = { "Temblor: miedo y sueño no sirven", 300 },  -- Tremor Totem
+    [8177]  = { "Derribador: no lances hechizos", 45 },     -- Grounding Totem
+    [8170]  = { "Purificación: quita venenos", 300 },       -- Cleansing Totem
+    [16190] = { "Marea de maná: mátalo", 12 },              -- Mana Tide Totem
+}
+
+-- Beneficios del enemigo que merece la pena purgar/disipar/robar: [id] = texto
+local PURGE_BUFFS = {
+    [17] = "Escudo",          -- Power Word: Shield
+    [11426] = "Escudo",       -- Ice Barrier
+    [1044] = "Sin raíces",    -- Hand of Freedom
+    [1022] = "Inmune a físico", -- Hand of Protection
+    [29166] = "Maná",         -- Innervate
+    [10060] = "+20% celeridad", -- Power Infusion
+    [12472] = "Celeridad",    -- Icy Veins
+    [12042] = "+20% daño",    -- Arcane Power
+    [974] = "Curación",       -- Earth Shield
+    [6346] = "Sin miedo",     -- Fear Ward
+}
+-- Hechizos del jugador que permiten purgar (si no tiene ninguno, no se muestran purgables)
+local PURGE_SPELLS = { 370, 527, 30449 }  -- Purge, Dispel Magic, Spellsteal
+
+-- Bebidas (todas se llaman igual en cada idioma, pero hay varias versiones)
+local DRINK_SPELLS = { 430, 431, 432, 1133, 1135, 1137, 22734, 27089, 34291, 43182, 43183, 46755, 57073 }
+
 local AURAS    -- [nombre localizado] = { kind, label, cat }; se construye al primer uso
 local IMMUNES  -- [nombre localizado] = texto
+local ENEMY_COOLDOWNS, TOTEMS, PURGEABLE, DRINKS  -- [nombre localizado] = datos
 local function BuildAuraTable()
     AURAS, IMMUNES = {}, {}
     for id, cat in pairs(CC_SPELLS) do
@@ -157,6 +209,23 @@ local function BuildAuraTable()
     for id, text in pairs(IMMUNE_SPELLS) do
         local name = GetSpellInfo(id)
         if name then IMMUNES[name] = text end
+    end
+    ENEMY_COOLDOWNS, TOTEMS, PURGEABLE, DRINKS = {}, {}, {}, {}
+    for id, cd in pairs(ENEMY_COOLDOWN_SPELLS) do
+        local name = GetSpellInfo(id)
+        if name then ENEMY_COOLDOWNS[name] = cd end
+    end
+    for id, t in pairs(TOTEM_SPELLS) do
+        local name = GetSpellInfo(id)
+        if name then TOTEMS[name] = { label = t[1], dur = t[2] } end
+    end
+    for id, text in pairs(PURGE_BUFFS) do
+        local name = GetSpellInfo(id)
+        if name then PURGEABLE[name] = name .. " (" .. text .. ")" end
+    end
+    for _, id in ipairs(DRINK_SPELLS) do
+        local name = GetSpellInfo(id)
+        if name then DRINKS[name] = true end
     end
 end
 
@@ -433,10 +502,7 @@ local function ScanAllies()
         if not seen[key] then ns.Log("alerta aliado: " .. text) end
     end
     seen = current
-
-    table.sort(list, function(a, b) return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end)
-    for i = #list, MAX_ALERTS + 1, -1 do list[i] = nil end
-    return list
+    return list  -- se ordena y recorta en OnUpdate, tras anadir tu DR y "lo enfocan"
 end
 
 ---------------------------------------------------------------------------
@@ -452,18 +518,35 @@ local FROM_GROUP = COMBATLOG_OBJECT_AFFILIATION_MINE + COMBATLOG_OBJECT_AFFILIAT
 local CC_FALLBACK = 12      -- si no llega el fin del control (fuera de rango), se borra a los N s
 local IMMUNE_FALLBACK = 15
 
-local enemies = {}  -- [guid] = { name, class, cc = {}, immune = {}, dr = {}, trinketAt }
+local enemies = {}  -- [guid] = { name, class, cc = {}, immune = {}, dr = {}, cds = {}, trinketAt }
+local totems = {}   -- [guid del totem] = { owner, class, label, icon, dur, expires }
+local selfDR = {}   -- [categoria] = { count, resetAt, icon, active }: controles que recibes tu
 
 local function IsHostilePlayer(flags) return band(flags, HOSTILE_PLAYER) == HOSTILE_PLAYER end
+
+local function ClassOfGUID(guid)
+    return GetPlayerInfoByGUID and select(2, GetPlayerInfoByGUID(guid))
+end
 
 local function Enemy(guid, name)
     local e = enemies[guid]
     if not e then
-        local class = GetPlayerInfoByGUID and select(2, GetPlayerInfoByGUID(guid))
-        e = { name = name, class = class, cc = {}, immune = {}, dr = {} }
+        e = { name = name, class = ClassOfGUID(guid), cc = {}, immune = {}, dr = {}, cds = {} }
         enemies[guid] = e
     end
     return e
+end
+
+-- Suma un control a un estado de DR (se reinicia DR_RESET s despues de acabar el ultimo)
+local function AddDR(drTable, cat, icon, now)
+    local dr = drTable[cat]
+    if not dr or (dr.resetAt and now > dr.resetAt) then dr = { count = 0 } end
+    dr.count = dr.count + 1
+    dr.resetAt = nil
+    dr.icon = icon
+    dr.at = now
+    drTable[cat] = dr
+    return dr
 end
 
 local ENEMY_UNITS = { "target", "focus", "arena1", "arena2", "arena3", "arena4", "arena5" }
@@ -479,24 +562,55 @@ local function OnCombatLog(...)
     local now = GetTime()
 
     if event == "SPELL_CAST_SUCCESS" then
-        if TRINKETS[spellId] and IsHostilePlayer(srcFlags) then
-            Enemy(srcGUID, srcName).trinketAt = now
-            ns.Log("enemigo " .. tostring(srcName) .. ": abalorio usado")
+        if srcFlags and IsHostilePlayer(srcFlags) then
+            if TRINKETS[spellId] then
+                Enemy(srcGUID, srcName).trinketAt = now
+                ns.Log("enemigo " .. tostring(srcName) .. ": abalorio usado")
+            elseif ENEMY_COOLDOWNS[spellName] then
+                Enemy(srcGUID, srcName).cds[spellName] =
+                    { usedAt = now, cd = ENEMY_COOLDOWNS[spellName], icon = select(3, GetSpellInfo(spellId)) }
+            end
         end
         return
     end
+
+    -- Totems enemigos: aparecen al invocarlos y se quitan al morir
+    if event == "SPELL_SUMMON" then
+        local t = TOTEMS[spellName]
+        if t and srcFlags and IsHostilePlayer(srcFlags) then
+            totems[dstGUID] = { owner = srcName, class = ClassOfGUID(srcGUID) or "SHAMAN", label = t.label,
+                                icon = select(3, GetSpellInfo(spellId)), dur = t.dur, expires = now + t.dur }
+            ns.Log("tótem enemigo: " .. spellName)
+        end
+        return
+    end
+    if event == "UNIT_DIED" or event == "UNIT_DESTROYED" then
+        totems[dstGUID] = nil
+        return
+    end
+
+    -- Tu propio DR: controles que te ponen a ti
+    if dstGUID == UnitGUID("player") then
+        local info = AURAS[spellName]
+        if info and info.kind == "cc" then
+            if event == "SPELL_AURA_APPLIED" or event == "SPELL_AURA_REFRESH" then
+                local dr = AddDR(selfDR, info.cat, select(3, GetSpellInfo(spellId)), now)
+                dr.active = true
+            elseif event == "SPELL_AURA_REMOVED" and selfDR[info.cat] then
+                selfDR[info.cat].active = nil
+                selfDR[info.cat].resetAt = now + DR_RESET
+            end
+        end
+        return
+    end
+
     if not dstFlags or not IsHostilePlayer(dstFlags) then return end
 
     if event == "SPELL_AURA_APPLIED" or event == "SPELL_AURA_REFRESH" then
         local info = AURAS[spellName]
         if info and info.kind == "cc" and band(srcFlags, FROM_GROUP) > 0 then
             local e = Enemy(dstGUID, dstName)
-            local dr = e.dr[info.cat]
-            if not dr or (dr.resetAt and now > dr.resetAt) then dr = { count = 0 } end
-            dr.count = dr.count + 1
-            dr.resetAt = nil  -- el reinicio cuenta desde que acaba el control
-            dr.icon = select(3, GetSpellInfo(spellId))
-            e.dr[info.cat] = dr
+            local dr = AddDR(e.dr, info.cat, select(3, GetSpellInfo(spellId)), now)
             e.cc[spellName] = { cat = info.cat, label = info.label, icon = dr.icon, applied = now, caster = srcName }
             ns.Log("enemigo " .. tostring(dstName) .. ": " .. info.label .. " (" .. tostring(srcName) .. "), DR " .. dr.count)
         elseif IMMUNES[spellName] then
@@ -567,6 +681,84 @@ local function ScanCasts(list, cfg, now)
     kicksSeen = current
 end
 
+-- ¿Puede el jugador purgar? (Purgar, Disipar magia o Robar hechizo en su libro)
+local canPurge
+local function UpdateCanPurge()
+    local names = {}
+    for _, id in ipairs(PURGE_SPELLS) do
+        local name = GetSpellInfo(id)
+        if name then names[name] = true end
+    end
+    canPurge = false
+    local i = 1
+    while true do
+        local name = GetSpellName(i, BOOKTYPE_SPELL)
+        if not name then break end
+        if names[name] then canPurge = true end
+        i = i + 1
+    end
+end
+
+-- Enemigos jugadores identificables (objetivo, foco, arena), sin repetir
+local function EnemyPlayerUnits()
+    local units, done = {}, {}
+    for _, unit in ipairs(ENEMY_UNITS) do
+        local guid = UnitGUID(unit)
+        if guid and not done[guid] and UnitIsPlayer(unit) and UnitCanAttack("player", unit)
+            and not UnitIsDeadOrGhost(unit) then
+            done[guid] = true
+            units[#units + 1] = unit
+        end
+    end
+    return units
+end
+
+-- Vida baja, perjuicios importantes, purgables y bebiendo
+local function ScanEnemyUnits(list, cfg, now)
+    if canPurge == nil then UpdateCanPurge() end
+    for _, unit in ipairs(EnemyPlayerUnits()) do
+        local _, class = UnitClass(unit)
+        local function Add(fields)
+            fields.name, fields.class, fields.unit = UnitName(unit), class, unit
+            list[#list + 1] = fields
+        end
+
+        if cfg.health then
+            local pct = math.floor(UnitHealth(unit) / math.max(UnitHealthMax(unit), 1) * 100)
+            if pct <= cfg.healthPct then
+                Add({ icon = HEALTH_ICON, kind = "health", label = "Vida " .. pct .. "%" })
+            end
+        end
+
+        if cfg.debuff then
+            for i = 1, 40 do
+                local aura, _, icon, _, _, duration, expires = UnitDebuff(unit, i)
+                if not aura then break end
+                local info = AURAS[aura]
+                if info and info.kind == "debuff" then
+                    local value
+                    if duration and duration > 0 and expires then value = (expires - now) / duration end
+                    Add({ icon = icon, kind = "debuff", label = info.label, value = value })
+                end
+            end
+        end
+
+        if (cfg.purge and canPurge) or cfg.drink then
+            for i = 1, 40 do
+                local aura, _, icon, _, _, duration, expires = UnitBuff(unit, i)
+                if not aura then break end
+                if cfg.purge and canPurge and PURGEABLE[aura] then
+                    local value
+                    if duration and duration > 0 and expires then value = (expires - now) / duration end
+                    Add({ icon = icon, kind = "purge", label = "Purgar: " .. PURGEABLE[aura], value = value })
+                elseif cfg.drink and DRINKS[aura] then
+                    Add({ icon = icon, kind = "drink", label = "Bebiendo: le falta maná" })
+                end
+            end
+        end
+    end
+end
+
 local function ScanEnemies()
     local cfg = ns.GetDB().alerts.enemy
     local now = GetTime()
@@ -629,16 +821,82 @@ local function ScanEnemies()
             end
         end
 
-        if not next(e.cc) and not next(e.dr) and not next(e.immune) and not e.trinketAt then
+        -- Cooldowns importantes que ya uso (identificables)
+        for spell, c in pairs(e.cds) do
+            local left = c.cd - (now - c.usedAt)
+            if left <= 0 then
+                e.cds[spell] = nil
+            elseif unit and cfg.cooldowns then
+                Add({ icon = c.icon, kind = "ecd", label = spell .. " usado", value = left / c.cd })
+            end
+        end
+
+        if not next(e.cc) and not next(e.dr) and not next(e.immune) and not next(e.cds) and not e.trinketAt then
             enemies[guid] = nil
         end
     end
 
+    -- Totems enemigos (de cualquier chaman enemigo, no hace falta tenerlo de objetivo)
+    for guid, t in pairs(totems) do
+        if now > t.expires then
+            totems[guid] = nil
+        elseif cfg.totems then
+            list[#list + 1] = { name = t.owner, class = t.class, icon = t.icon, kind = "totem",
+                                label = t.label, value = (t.expires - now) / t.dur }
+        end
+    end
+
+    ScanEnemyUnits(list, cfg, now)
     ScanCasts(list, cfg, now)
 
     table.sort(list, function(a, b) return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end)
     for i = #list, MAX_ALERTS + 1, -1 do list[i] = nil end
     return list
+end
+
+---------------------------------------------------------------------------
+-- Extras de la fila de aliados: tu propio DR y "lo enfocan" (arena)
+---------------------------------------------------------------------------
+
+local FOCUS_ICON = "Interface\\Icons\\Ability_Hunter_SniperShot"
+local FOCUS_MIN = 2  -- enemigos de arena apuntando al mismo aliado
+local FRIENDLY_UNITS = { "player", "party1", "party2", "party3", "party4" }
+
+local function ScanAllyExtras(list, now)
+    local cfg = ns.GetDB().alerts.ally
+    local _, myClass = UnitClass("player")
+
+    -- Tu DR: como te durara el siguiente control de cada tipo (para decidir el abalorio)
+    for cat, dr in pairs(selfDR) do
+        if dr.active and now - dr.at > CC_FALLBACK then
+            dr.active, dr.resetAt = nil, now + DR_RESET
+        end
+        if dr.resetAt and now > dr.resetAt then
+            selfDR[cat] = nil
+        elseif cfg.selfDR and not dr.active and dr.resetAt then
+            list[#list + 1] = { name = "Tú", class = myClass, unit = "player", icon = dr.icon, kind = "dr",
+                                label = CC_LABELS[cat] .. ": siguiente " .. DR_NEXT[math.min(dr.count, 3)],
+                                value = (dr.resetAt - now) / DR_RESET }
+        end
+    end
+
+    -- Lo enfocan: varios enemigos de arena con el mismo aliado de objetivo
+    if cfg.focus then
+        local counts = {}
+        for i = 1, 5 do
+            local guid = UnitGUID("arena" .. i .. "target")
+            if guid then counts[guid] = (counts[guid] or 0) + 1 end
+        end
+        for _, unit in ipairs(FRIENDLY_UNITS) do
+            local guid = UnitGUID(unit)
+            local n = guid and counts[guid]
+            if n and n >= FOCUS_MIN then
+                local _, class = UnitClass(unit)
+                list[#list + 1] = { name = UnitName(unit), class = class, unit = unit, icon = FOCUS_ICON,
+                                    kind = "focus", label = "Lo enfocan " .. n .. " enemigos" }
+            end
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -680,7 +938,14 @@ local function OnUpdate(_, elapsed)
 
     banner:Hide()
     local enabled = ns.GetDB().enabled and ns.GetDB().features.alerts
-    Render(rows.ally, enabled and ScanAllies() or EMPTY, GetTime(), size)
+    local allies = EMPTY
+    if enabled then
+        allies = ScanAllies()
+        ScanAllyExtras(allies, GetTime())
+        table.sort(allies, function(a, b) return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end)
+        for i = #allies, MAX_ALERTS + 1, -1 do allies[i] = nil end
+    end
+    Render(rows.ally, allies, GetTime(), size)
     Render(rows.enemy, enabled and ScanEnemies() or EMPTY, GetTime(), size)
 end
 
@@ -693,9 +958,14 @@ function ns.InitAlerts()
     local events = CreateFrame("Frame")
     events:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
+    events:RegisterEvent("SPELLS_CHANGED")
     events:SetScript("OnEvent", function(_, event, ...)
         if event == "PLAYER_ENTERING_WORLD" then
-            wipe(enemies)  -- nueva zona / arena: se olvida lo anterior
+            -- nueva zona / arena: se olvida lo anterior
+            wipe(enemies); wipe(totems); wipe(selfDR)
+            return
+        elseif event == "SPELLS_CHANGED" then
+            canPurge = nil  -- se vuelve a mirar si puedes purgar
             return
         end
         local ok, err = pcall(OnCombatLog, ...)

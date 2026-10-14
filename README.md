@@ -121,7 +121,7 @@ Para ver los errores de Lua en pantalla: `/console scriptErrors 1`.
 - [x] Perfiles de configuración guardados.
 - [x] Detección automática de clase (guerrero y chamán).
 - [x] Replicar para todas las clases: listas de las 10 clases hechas (por probar en el juego cada una). Las habilidades de mascota (Bloqueo de hechizo, etc.) no se rastrean porque no están en el libro del jugador.
-- [ ] Elegir la clase a mano (ahora solo detección automática).
+- [ ] Elegir la clase a mano (ahora solo detección automática): **por discutir y definir mejor**.
 ### Alertas JcJ (objetivo: ventaja en arena)
 
 Vista elegida: **opción A**, iconos grandes en el centro con el nombre del jugador. Se configura en una pestaña **Alertas** con dos secciones, Aliados y Enemigos. Primero se hace un **modo demostración** (`/pvpkit demo`) con datos inventados para revisar la experiencia de uso; después, los datos reales.
@@ -131,16 +131,17 @@ Para probar sin equipo de arena: campos de batalla (controles, perjuicios y vida
 - [x] Modo demostración (`/pvpkit demo`; el botón de la pestaña se quitó) y pestaña Alertas con casillas por sección y umbral de vida baja (solo visual). Fila Aliados y fila Enemigos en el centro-arriba; borde de color según el tipo (morado control, rojo perjuicio/vida, dorado inmune, gris abalorio, azul lanzando), barra que se vacía con la duración (sin números), DR en la esquina y "¡AHORA!" latiendo.
 - [x] Cada alerta muestra la **cara** del jugador (si el juego la tiene: arena, grupo, objetivo, foco) junto al icono del efecto, con el emblema de la clase en la esquina; si no hay cara, el emblema de la clase ocupa su lugar. Tamaño de alertas XS/S/M/L en la pestaña Tamaños (vista previa con la demostración).
 - [x] **Aliados (datos reales):** control (CC) mientras dure con quién lo puso, perjuicios importantes (reducción de curación, Aflicción inestable) y vida baja (umbral configurable), en grupo, banda o campo de batalla. Unos 65 controles de todas las clases, comparados por nombre (sirve cualquier rango). Máximo 6 alertas, ordenadas: control, vida baja, perjuicio. Por probar en el juego.
-- [ ] **Aliados:** "lo están enfocando". Solo es fiable en arena: el juego solo da el objetivo de los enemigos de arena o del objetivo/foco.
+- [x] **Aliados - "Lo enfocan" (arena):** aliado (o tú) con 2 o más enemigos de arena apuntándole.
 - [x] **Enemigos - control (CC):** los que pone tu grupo sobre jugadores enemigos, con quién lo puso, barra de duración si el enemigo es identificable (objetivo, foco, arena) y su DR en la esquina.
 - [x] **¡Córtalo!:** cuando tu objetivo, foco o enemigo de arena (también PNJ) lanza algo, sale con la barra del lanzamiento; si se puede interrumpir y tu corte (Golpe con escudo, Zurrar, Corte de viento) está listo y a rango, sale en naranja latiendo "¡CÓRTALO! hechizo (tu corte)". Se puede apagar por separado: "Hechizo que lanza" y "¡Córtalo!".
-- [ ] **Enemigos:** perjuicios; vida baja (para rematar).
+- [x] **Enemigos - perjuicios y vida baja:** reducción de curación y Aflicción inestable sobre tu objetivo, foco o enemigos de arena, y su vida baja con umbral propio (10-50 %).
+- [x] **Cooldowns del enemigo usados:** unos 55 cortes, defensivos, escapes y controles largos de todas las clases; sale "X usado" con la barra hasta que lo recupera (objetivo, foco o arena).
 - [x] **Rendimientos decrecientes (DR)** (aproximado; categorías simplificadas, reinicio a los 18 s) por tipo de control sobre cada enemigo, para encadenar controles con el equipo. Ejemplo: el chamán aturde y tú lanzas tu aturdimiento justo al acabar, sabiendo si durará entero, la mitad o nada. Necesita la lista de controles de todas las clases.
 - [x] **Abalorio JcJ del enemigo** (objetivo, foco o arena; 2 min): si ya lo usó y cuánto falta para que lo recupere.
 - [x] **Inmunidades y defensivos activos del enemigo** (objetivo, foco o arena) (Escudo divino, Bloque de hielo, Capa de las Sombras, Caparazón antimagia, Reflejo de hechizos, Filotormenta...): "no gastes control ni hechizos ahora".
 - [ ] **Ventana de muerte "¡AHORA!"** (sanador enemigo controlado y objetivo con poca vida): **por discutir** antes de hacerla.
-- [ ] **Cortes del enemigo:** cuándo tiene listos Zurrar, Patada, Contrahechizo, etc. (sobre todo para el chamán sanador).
-- [ ] **Tótems enemigos:** Tótem de temblor (tu miedo no sirve) o Tótem derribador (no lances hechizos), para matarlo.
-- [ ] **Purgables:** beneficios del enemigo que el chamán puede purgar.
-- [ ] **Sanador enemigo bebiendo** (le falta maná: hay que presionar).
-- [ ] **Tu propio DR:** si el próximo control que recibas será completo, la mitad o nada, para decidir si usar tu abalorio.
+- [x] **Cortes del enemigo:** incluidos en los cooldowns usados (Zurrar, Patada, Contrahechizo, Corte de viento, Helada mental...).
+- [x] **Tótems enemigos:** Temblor, Derribador, Purificación y Marea de maná de cualquier chamán enemigo, hasta que muere o se acaba.
+- [x] **Purgables:** solo si tienes Purgar, Disipar magia o Robar hechizo; Escudo de poder, Barrera de hielo, Mano de libertad/protección, Inervar, Infusión de poder, Venas heladas, Poder arcano, Escudo de tierra, Custodia de miedo.
+- [x] **Enemigo bebiendo** (le falta maná: hay que presionar).
+- [x] **Tu propio DR:** tras un control sale "Tú: Aturdido: siguiente ½" con la barra del reinicio, para decidir si usar tu abalorio.

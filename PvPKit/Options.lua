@@ -24,20 +24,25 @@ local ALERT_SECTIONS = {
         { key = "cc",     label = "Control (CC)" },
         { key = "debuff", label = "Perjuicios importantes" },
         { key = "health", label = "Vida baja" },
-        { key = "focus",  label = "Lo enfocan", soon = true },
+        { key = "focus",  label = "Lo enfocan (arena)" },
+        { key = "selfDR", label = "Tu DR (abalorio)" },
     } },
     { key = "enemy", title = "Enemigos", color = { 1, 0.3, 0.3 }, options = {
         { key = "cc",         label = "Control (CC) y DR" },
         { key = "casts",      label = "Hechizo que lanza" },
         { key = "kick",       label = "¡Córtalo!" },
+        { key = "cooldowns",  label = "Cooldowns usados" },
         { key = "trinket",    label = "Abalorio JcJ" },
         { key = "immune",     label = "Inmunidades" },
-        { key = "debuff",     label = "Perjuicios", soon = true },
-        { key = "health",     label = "Vida baja", soon = true },
+        { key = "totems",     label = "Tótems" },
+        { key = "purge",      label = "Purgables" },
+        { key = "drink",      label = "Bebiendo" },
+        { key = "debuff",     label = "Perjuicios" },
+        { key = "health",     label = "Vida baja" },
         { key = "killWindow", label = "¡AHORA!", soon = true },
     } },
 }
-local allyHealthSlider
+local healthSliders = {}  -- [seccion] = deslizador de vida baja
 
 -- Funciones que se pueden apagar por completo (pestana General)
 local FEATURES = {
@@ -426,7 +431,7 @@ local function CreateCheckList(page, prefix, x, y, width, title, color, items)
         check:SetPoint("TOPLEFT", x - 4, y)
         local text = _G[check:GetName() .. "Text"]
         if it.soon then
-            text:SetText(it.label .. " (pronto)")
+            text:SetText(it.label .. " (por discutir)")
             text:SetTextColor(0.5, 0.5, 0.5)
             check:Disable()
         else
@@ -446,19 +451,19 @@ end
 
 local function UpdateCheckLists()
     for _, list in ipairs(checkLists) do list.Update() end
-    if allyHealthSlider then
-        local value = ns.GetDB().alerts.ally.healthPct
-        allyHealthSlider.updating = true
-        allyHealthSlider:SetValue(value)
-        allyHealthSlider.updating = false
-        _G[allyHealthSlider:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
+    for section, s in pairs(healthSliders) do
+        local value = ns.GetDB().alerts[section].healthPct
+        s.updating = true
+        s:SetValue(value)
+        s.updating = false
+        _G[s:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
     end
 end
 
 local function BuildAlertsPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Apaga lo que no quieras ver. ¡Córtalo! avisa si tu corte está listo\ny a rango cuando tu objetivo, foco o enemigo de arena lanza algo.")
+    help:SetText("Apaga lo que no quieras ver. Casi todo lo de enemigos es para tu\nobjetivo, foco o enemigos de arena; los tótems, de cualquier chamán.")
 
     local lowest = 0
     for col, sec in ipairs(ALERT_SECTIONS) do
@@ -474,23 +479,21 @@ local function BuildAlertsPage(page)
         local _, y = CreateCheckList(page, "PvPKitAlert_" .. sec.key .. "_", x, CONTENT_TOP - 44, 182,
             sec.title, sec.color, items)
 
-        -- Umbral de vida baja (solo aliados por ahora)
-        if sec.key == "ally" then
-            local s = CreateFrame("Slider", "PvPKitAlertHealth_ally", page, "OptionsSliderTemplate")
-            s:SetWidth(150)
-            s:SetPoint("TOPLEFT", x, y - 22)
-            s:SetMinMaxValues(10, 50)
-            s:SetValueStep(5)
-            _G[s:GetName() .. "Low"]:SetText("10%")
-            _G[s:GetName() .. "High"]:SetText("50%")
-            s:SetScript("OnValueChanged", function(self, value)
-                value = math.floor(value / 5 + 0.5) * 5
-                _G[self:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
-                if not self.updating then ns.GetDB().alerts.ally.healthPct = value end
-            end)
-            allyHealthSlider = s
-            y = y - 60
-        end
+        -- Umbral de vida baja de cada seccion
+        local s = CreateFrame("Slider", "PvPKitAlertHealth_" .. sec.key, page, "OptionsSliderTemplate")
+        s:SetWidth(150)
+        s:SetPoint("TOPLEFT", x, y - 22)
+        s:SetMinMaxValues(10, 50)
+        s:SetValueStep(5)
+        _G[s:GetName() .. "Low"]:SetText("10%")
+        _G[s:GetName() .. "High"]:SetText("50%")
+        s:SetScript("OnValueChanged", function(self, value)
+            value = math.floor(value / 5 + 0.5) * 5
+            _G[self:GetName() .. "Text"]:SetText("Vida baja: " .. value .. "%")
+            if not self.updating then ns.GetDB().alerts[sec.key].healthPct = value end
+        end)
+        healthSliders[sec.key] = s
+        y = y - 60
         lowest = math.min(lowest, y)
     end
     page.height = -lowest + 30

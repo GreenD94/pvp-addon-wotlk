@@ -27,9 +27,10 @@ local defaults = {
     alertSize = 60,
     alertPos = { point = "CENTER", relPoint = "CENTER", x = 0, y = 170 },
     alerts = {
-        ally  = { cc = true, debuff = true, health = true, healthPct = 30, focus = true },
+        ally  = { cc = true, debuff = true, health = true, healthPct = 30, focus = true, selfDR = true },
         enemy = { cc = true, debuff = true, health = true, healthPct = 30, casts = true,
-                  trinket = true, immune = true, killWindow = true, kick = true },
+                  trinket = true, immune = true, killWindow = true, kick = true,
+                  cooldowns = true, totems = true, purge = true, drink = true },
     },
     favorites = {}, -- [spellID] = true: va a la barra de favoritas en vez de la suya
 }
