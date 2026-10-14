@@ -128,11 +128,12 @@ Para probar sin equipo de arena: campos de batalla (controles, perjuicios y vida
 - [x] Cada alerta muestra la **cara** del jugador (si el juego la tiene: arena, grupo, objetivo, foco) junto al icono del efecto, con el emblema de la clase en la esquina; si no hay cara, el emblema de la clase ocupa su lugar. Tamaño de alertas XS/S/M/L en la pestaña Tamaños (vista previa con la demostración).
 - [x] **Aliados (datos reales):** control (CC) mientras dure con quién lo puso, perjuicios importantes (reducción de curación, Aflicción inestable) y vida baja (umbral configurable), en grupo, banda o campo de batalla. Unos 65 controles de todas las clases, comparados por nombre (sirve cualquier rango). Máximo 6 alertas, ordenadas: control, vida baja, perjuicio. Por probar en el juego.
 - [ ] **Aliados:** "lo están enfocando". Solo es fiable en arena: el juego solo da el objetivo de los enemigos de arena o del objetivo/foco.
-- [ ] **Enemigos:** control (CC) con quién lo puso y cuánto le queda; perjuicios; vida baja (para rematar); hechizo que está lanzando.
-- [ ] **Rendimientos decrecientes (DR)** por tipo de control sobre cada enemigo, para encadenar controles con el equipo. Ejemplo: el chamán aturde y tú lanzas tu aturdimiento justo al acabar, sabiendo si durará entero, la mitad o nada. Necesita la lista de controles de todas las clases.
-- [ ] **Abalorio JcJ del enemigo:** si ya lo usó y cuánto falta para que lo recupere.
-- [ ] **Inmunidades y defensivos activos del enemigo** (Escudo divino, Bloque de hielo, Capa de las Sombras, Caparazón antimagia, Reflejo de hechizos, Filotormenta...): "no gastes control ni hechizos ahora".
-- [ ] **Ventana de muerte:** sanador enemigo controlado y objetivo con poca vida, sale "¡AHORA!".
+- [x] **Enemigos - control (CC):** los que pone tu grupo sobre jugadores enemigos, con quién lo puso, barra de duración si el enemigo es identificable (objetivo, foco, arena) y su DR en la esquina.
+- [ ] **Enemigos:** perjuicios; vida baja (para rematar); hechizo que está lanzando.
+- [x] **Rendimientos decrecientes (DR)** (aproximado; categorías simplificadas, reinicio a los 18 s) por tipo de control sobre cada enemigo, para encadenar controles con el equipo. Ejemplo: el chamán aturde y tú lanzas tu aturdimiento justo al acabar, sabiendo si durará entero, la mitad o nada. Necesita la lista de controles de todas las clases.
+- [x] **Abalorio JcJ del enemigo** (objetivo, foco o arena; 2 min): si ya lo usó y cuánto falta para que lo recupere.
+- [x] **Inmunidades y defensivos activos del enemigo** (objetivo, foco o arena) (Escudo divino, Bloque de hielo, Capa de las Sombras, Caparazón antimagia, Reflejo de hechizos, Filotormenta...): "no gastes control ni hechizos ahora".
+- [ ] **Ventana de muerte "¡AHORA!"** (sanador enemigo controlado y objetivo con poca vida): **por discutir** antes de hacerla.
 - [ ] **Cortes del enemigo:** cuándo tiene listos Zurrar, Patada, Contrahechizo, etc. (sobre todo para el chamán sanador).
 - [ ] **Tótems enemigos:** Tótem de temblor (tu miedo no sirve) o Tótem derribador (no lances hechizos), para matarlo.
 - [ ] **Purgables:** beneficios del enemigo que el chamán puede purgar.

@@ -18,8 +18,10 @@ local BORDER_COLORS = {
     immune  = { 1.00, 0.82, 0.00 },  -- inmune: dorado
     trinket = { 0.60, 0.60, 0.60 },  -- abalorio usado: gris
     cast    = { 0.30, 0.60, 1.00 },  -- lanzando: azul
+    dr      = { 0.40, 0.50, 0.70 },  -- rendimiento decreciente pendiente: gris azulado
 }
-local KIND_ORDER = { cc = 1, health = 2, debuff = 3 }  -- orden dentro de la fila de aliados
+-- orden dentro de cada fila
+local KIND_ORDER = { cc = 1, health = 2, debuff = 3, immune = 4, dr = 5, trinket = 6 }
 
 ---------------------------------------------------------------------------
 -- Controles y perjuicios de JcJ (todas las clases). Se comparan por nombre
@@ -116,9 +118,33 @@ local DEBUFF_SPELLS = {
     [30108] = "no disipar",     -- Unstable Affliction
 }
 
-local AURAS  -- [nombre localizado] = { kind, label }; se construye al primer uso
+-- Inmunidades y defensivos del enemigo: [id] = texto
+local IMMUNE_SPELLS = {
+    [642] = "INMUNE",              -- Divine Shield
+    [45438] = "INMUNE",            -- Ice Block
+    [1022] = "Inmune a físico",    -- Hand of Protection
+    [19263] = "Desvía ataques",    -- Deterrence
+    [31224] = "Inmune a hechizos", -- Cloak of Shadows
+    [48707] = "Absorbe magia",     -- Anti-Magic Shell
+    [23920] = "Refleja hechizos",  -- Spell Reflection
+    [46924] = "Inmune a control",  -- Bladestorm
+    [34471] = "Inmune a control",  -- The Beast Within
+    [47585] = "-90% daño",         -- Dispersion
+}
+
+-- Abalorio JcJ y "Cada hombre por si mismo" (humano): mismo efecto, 2 min
+local TRINKETS = { [42292] = true, [59752] = true }
+local TRINKET_CD = 120
+
+-- Rendimientos decrecientes (aproximado): se reinicia 18 s despues de acabar el ultimo control
+-- de ese tipo. Texto = como durara el siguiente tras N controles seguidos.
+local DR_RESET = 18
+local DR_NEXT = { "½", "¼", "inmune" }
+
+local AURAS    -- [nombre localizado] = { kind, label, cat }; se construye al primer uso
+local IMMUNES  -- [nombre localizado] = texto
 local function BuildAuraTable()
-    AURAS = {}
+    AURAS, IMMUNES = {}, {}
     for id, cat in pairs(CC_SPELLS) do
         local name = GetSpellInfo(id)
         if name then AURAS[name] = { kind = "cc", label = CC_LABELS[cat], cat = cat } end
@@ -126,6 +152,10 @@ local function BuildAuraTable()
     for id, text in pairs(DEBUFF_SPELLS) do
         local name = GetSpellInfo(id)
         if name and not AURAS[name] then AURAS[name] = { kind = "debuff", label = name .. " (" .. text .. ")" } end
+    end
+    for id, text in pairs(IMMUNE_SPELLS) do
+        local name = GetSpellInfo(id)
+        if name then IMMUNES[name] = text end
     end
 end
 
@@ -163,8 +193,14 @@ local function CellWidth(size) return math.max(size * 2 + 30, 130) end
 local function CellHeight(size) return size + 50 end
 
 local function SetClassEmblem(tex, class)
-    tex:SetTexture(CLASS_EMBLEMS)
-    tex:SetTexCoord(unpack(CLASS_ICON_TCOORDS[class]))
+    local coords = class and CLASS_ICON_TCOORDS[class]
+    if coords then
+        tex:SetTexture(CLASS_EMBLEMS)
+        tex:SetTexCoord(unpack(coords))
+    else  -- clase desconocida
+        tex:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
 end
 
 local function CreateCell(parent)
@@ -385,6 +421,155 @@ local function ScanAllies()
 end
 
 ---------------------------------------------------------------------------
+-- Enemigos reales (registro de combate)
+-- Controles y DR: solo los que pone tu grupo (para encadenar con el equipo).
+-- Inmunidades y abalorio: solo de enemigos identificables (objetivo, foco, arena1-5).
+---------------------------------------------------------------------------
+
+local band = bit.band
+local HOSTILE_PLAYER = COMBATLOG_OBJECT_REACTION_HOSTILE + COMBATLOG_OBJECT_TYPE_PLAYER
+local FROM_GROUP = COMBATLOG_OBJECT_AFFILIATION_MINE + COMBATLOG_OBJECT_AFFILIATION_PARTY
+    + COMBATLOG_OBJECT_AFFILIATION_RAID
+local CC_FALLBACK = 12      -- si no llega el fin del control (fuera de rango), se borra a los N s
+local IMMUNE_FALLBACK = 15
+
+local enemies = {}  -- [guid] = { name, class, cc = {}, immune = {}, dr = {}, trinketAt }
+
+local function IsHostilePlayer(flags) return band(flags, HOSTILE_PLAYER) == HOSTILE_PLAYER end
+
+local function Enemy(guid, name)
+    local e = enemies[guid]
+    if not e then
+        local class = GetPlayerInfoByGUID and select(2, GetPlayerInfoByGUID(guid))
+        e = { name = name, class = class, cc = {}, immune = {}, dr = {} }
+        enemies[guid] = e
+    end
+    return e
+end
+
+local ENEMY_UNITS = { "target", "focus", "arena1", "arena2", "arena3", "arena4", "arena5" }
+local function UnitForGUID(guid)
+    for _, unit in ipairs(ENEMY_UNITS) do
+        if UnitGUID(unit) == guid then return unit end
+    end
+end
+
+local function OnCombatLog(...)
+    local _, event, srcGUID, srcName, srcFlags, dstGUID, dstName, dstFlags, spellId, spellName = ...
+    if not AURAS then BuildAuraTable() end
+    local now = GetTime()
+
+    if event == "SPELL_CAST_SUCCESS" then
+        if TRINKETS[spellId] and IsHostilePlayer(srcFlags) then
+            Enemy(srcGUID, srcName).trinketAt = now
+            ns.Log("enemigo " .. tostring(srcName) .. ": abalorio usado")
+        end
+        return
+    end
+    if not dstFlags or not IsHostilePlayer(dstFlags) then return end
+
+    if event == "SPELL_AURA_APPLIED" or event == "SPELL_AURA_REFRESH" then
+        local info = AURAS[spellName]
+        if info and info.kind == "cc" and band(srcFlags, FROM_GROUP) > 0 then
+            local e = Enemy(dstGUID, dstName)
+            local dr = e.dr[info.cat]
+            if not dr or (dr.resetAt and now > dr.resetAt) then dr = { count = 0 } end
+            dr.count = dr.count + 1
+            dr.resetAt = nil  -- el reinicio cuenta desde que acaba el control
+            dr.icon = select(3, GetSpellInfo(spellId))
+            e.dr[info.cat] = dr
+            e.cc[spellName] = { cat = info.cat, label = info.label, icon = dr.icon, applied = now, caster = srcName }
+            ns.Log("enemigo " .. tostring(dstName) .. ": " .. info.label .. " (" .. tostring(srcName) .. "), DR " .. dr.count)
+        elseif IMMUNES[spellName] then
+            Enemy(dstGUID, dstName).immune[spellName] =
+                { label = IMMUNES[spellName], icon = select(3, GetSpellInfo(spellId)), applied = now }
+            ns.Log("enemigo " .. tostring(dstName) .. ": " .. spellName)
+        end
+    elseif event == "SPELL_AURA_REMOVED" then
+        local e = enemies[dstGUID]
+        if not e then return end
+        local c = e.cc[spellName]
+        if c then
+            e.cc[spellName] = nil
+            if e.dr[c.cat] then e.dr[c.cat].resetAt = now + DR_RESET end
+        end
+        e.immune[spellName] = nil
+    end
+end
+
+local function ScanEnemies()
+    local cfg = ns.GetDB().alerts.enemy
+    local now = GetTime()
+    local list = {}
+
+    for guid, e in pairs(enemies) do
+        local unit = UnitForGUID(guid)
+        local base = { name = e.name, class = e.class, unit = unit }
+        local function Add(fields)
+            for k, v in pairs(base) do fields[k] = v end
+            list[#list + 1] = fields
+        end
+        local activeCats = {}
+
+        -- Controles activos (con su DR: como durara el siguiente)
+        for spell, c in pairs(e.cc) do
+            if now - c.applied > CC_FALLBACK then
+                e.cc[spell] = nil
+                if e.dr[c.cat] then e.dr[c.cat].resetAt = now + DR_RESET end
+            else
+                activeCats[c.cat] = true
+                if cfg.cc then
+                    local value
+                    if unit then
+                        local _, _, _, _, _, duration, expires = UnitDebuff(unit, spell)
+                        if duration and duration > 0 and expires then value = (expires - now) / duration end
+                    end
+                    local dr = e.dr[c.cat]
+                    Add({ icon = c.icon, kind = "cc", value = value,
+                          label = c.label .. " (" .. tostring(c.caster) .. ")",
+                          dr = dr and "DR " .. DR_NEXT[math.min(dr.count, 3)] })
+                end
+            end
+        end
+
+        -- DR pendiente tras acabar el control: cuanto falta para que se reinicie
+        for cat, dr in pairs(e.dr) do
+            if dr.resetAt and now > dr.resetAt then
+                e.dr[cat] = nil
+            elseif dr.resetAt and cfg.cc and not activeCats[cat] then
+                Add({ icon = dr.icon, kind = "dr", value = (dr.resetAt - now) / DR_RESET,
+                      label = CC_LABELS[cat] .. ": siguiente " .. DR_NEXT[math.min(dr.count, 3)] })
+            end
+        end
+
+        -- Inmunidades y abalorio solo si el enemigo es identificable
+        for spell, im in pairs(e.immune) do
+            if now - im.applied > IMMUNE_FALLBACK then
+                e.immune[spell] = nil
+            elseif unit and cfg.immune then
+                Add({ icon = im.icon, kind = "immune", label = im.label })
+            end
+        end
+        if e.trinketAt then
+            local left = TRINKET_CD - (now - e.trinketAt)
+            if left <= 0 then
+                e.trinketAt = nil
+            elseif unit and cfg.trinket then
+                Add({ icon = SpellIcon(42292), kind = "trinket", label = "Sin abalorio", value = left / TRINKET_CD })
+            end
+        end
+
+        if not next(e.cc) and not next(e.dr) and not next(e.immune) and not e.trinketAt then
+            enemies[guid] = nil
+        end
+    end
+
+    table.sort(list, function(a, b) return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end)
+    for i = #list, MAX_ALERTS + 1, -1 do list[i] = nil end
+    return list
+end
+
+---------------------------------------------------------------------------
 -- Bucle
 ---------------------------------------------------------------------------
 
@@ -420,15 +605,31 @@ local function OnUpdate(_, elapsed)
     end
 
     banner:Hide()
-    local allies = ns.GetDB().enabled and ScanAllies() or EMPTY
-    Render(rows.ally, allies, GetTime(), size)
-    Render(rows.enemy, EMPTY, 0, size)
+    local enabled = ns.GetDB().enabled
+    Render(rows.ally, enabled and ScanAllies() or EMPTY, GetTime(), size)
+    Render(rows.enemy, enabled and ScanEnemies() or EMPTY, GetTime(), size)
 end
 
 -- Se llama al terminar de cargar (Core.lua)
 function ns.InitAlerts()
     Build()
     local lastErr
+
+    local events = CreateFrame("Frame")
+    events:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    events:RegisterEvent("PLAYER_ENTERING_WORLD")
+    events:SetScript("OnEvent", function(_, event, ...)
+        if event == "PLAYER_ENTERING_WORLD" then
+            wipe(enemies)  -- nueva zona / arena: se olvida lo anterior
+            return
+        end
+        local ok, err = pcall(OnCombatLog, ...)
+        if not ok and err ~= lastErr then
+            lastErr = err
+            ns.LogError("registro de combate: " .. tostring(err))
+        end
+    end)
+
     container:SetScript("OnUpdate", function(self, elapsed)
         local ok, err = pcall(OnUpdate, self, elapsed)
         if not ok and err ~= lastErr then
