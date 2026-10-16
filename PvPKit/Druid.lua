@@ -20,6 +20,9 @@ local spells = {
     { id = 61336, def = true },  -- Survival Instincts
     { id = 22842, def = true },  -- Frenzied Regeneration
     { id = 29166, def = true },  -- Innervate
+    { id = 2782,  def = true, cond = "dispel" },  -- Remove Curse
+    { id = 2893,  def = true, cond = "dispel" },  -- Abolish Poison
+    { id = 8946,  def = true, cond = "dispel" },  -- Cure Poison
     { id = 17116, def = true },  -- Nature's Swiftness
     { id = 18562, def = true },  -- Swiftmend
     { id = 48438, def = true },  -- Wild Growth

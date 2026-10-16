@@ -15,20 +15,43 @@ local defaults = {
     popTime = 2,
     spacing = 6,
     groups = {
-        main = { size = 80, max = 8,  point = "CENTER", relPoint = "CENTER", x = 0, y = -120, dir = "H", align = "center" },
-        cd   = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -200, dir = "H", align = "center" },
-        def  = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -252, dir = "H", align = "center" },
-        fav  = { size = 44, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -304, dir = "H", align = "center" },
+        main = { size = 32, max = 8,  point = "CENTER", relPoint = "CENTER", x = 0, y = -120, dir = "H", align = "center" },
+        cd   = { size = 32, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -165, dir = "H", align = "center" },
+        def  = { size = 32, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -203, dir = "H", align = "center" },
+        fav  = { size = 32, max = 12, point = "CENTER", relPoint = "CENTER", x = 0, y = -241, dir = "H", align = "center" },
     },
     disabled = {},  -- [spellID] = true
     -- Alertas JcJ (de momento solo se usan en la demostracion)
     -- Funciones que se pueden apagar por completo (pestana General)
-    features = { pop = true, procs = true, bar_cd = true, bar_def = true, bar_fav = true, alerts = true },
-    alertSize = 60,
+    features = { pop = true, procs = true, bar_cd = true, bar_def = true, bar_fav = true, alerts = true,
+                 alertPop = true, alertPanel = true, tips = true },
+    -- Consejos (pestana Consejos): generales y de cada clase (ver ns.TIPS en Alerts.lua)
+    tips = {
+        defend = true, stealth = true, targetSwitch = true, killWindow = true, kickImportant = false,
+        purgeHot = true,
+        disarm = true, hamstring = true, msRefresh = true, reflectCC = true, berserkerFear = true,
+        frozen = true, polyFocus = true, nova = true, barrier = true,
+        grounding = true, tremor = true, totemDown = true, shield = true, nsHeal = true,
+        psyScream = true, shieldAlly = true, painSup = true, fearWard = true, shadowfiend = true,
+        cloak = true, kidney = true, blindHealer = true, dismantle = true,
+        cycloneFocus = true, shiftRoot = true, innervate = true,
+        bopAlly = true, freedom = true, hojKill = true,
+        scatter = true, aimed = true, wyvernFocus = true,
+        fearFocus = true, deathCoil = true, howl = true, uaKeep = true,
+        strangulate = true, chains = true, grip = true, lichborne = true, amsCast = true,
+    },
+    alertSize = 32,
     alertPos = { point = "CENTER", relPoint = "CENTER", x = 0, y = 170 },
+    alertSimple = false,  -- modo simple: el efecto (Aturdido, Frenado...) en vez del hechizo
+    -- Paneles laterales de alertas (a la derecha, en el centro de la pantalla)
+    panels = {
+        ally  = { size = 32, dir = "H", point = "TOPLEFT", relPoint = "RIGHT", x = -340, y = 170 },
+        enemy = { size = 32, dir = "H", point = "TOPLEFT", relPoint = "RIGHT", x = -340, y = -20 },
+    },
     alerts = {
-        ally  = { cc = true, debuff = true, health = true, healthPct = 30, focus = true, selfDR = true },
-        enemy = { cc = true, debuff = true, health = true, healthPct = 30, casts = true,
+        ally  = { cc = true, snare = true, debuff = true, health = true, healthPct = 30, focus = true,
+                  selfDR = true },
+        enemy = { cc = true, snare = true, debuff = true, health = true, healthPct = 30, casts = true,
                   trinket = true, immune = true, killWindow = true, kick = true,
                   cooldowns = true, totems = true, purge = true, drink = true },
     },
@@ -48,6 +71,9 @@ local testMode = false
 local quietUntil = 0
 
 local TEST_TIME = 5        -- el modo prueba se apaga solo tras estos segundos
+-- /pvpkit demo (demostracion de alertas y consejos): apagado en la version publicada.
+-- Para probar la interfaz, poner true. La vista previa al mover o cambiar el tamano sigue activa.
+local DEMO_COMMAND = false
 local LOG_MAX = 500        -- lineas guardadas en PvPKitDB.log
 
 local testUntil = 0
@@ -113,6 +139,38 @@ ns.conditions = {
     inRange = function(s)
         return IsSpellInRange(s.name, "target") == 1
     end,
+    -- Tengo encima un control de los tipos s.cats (Ira rabiosa, Voluntad de los Renegados...)
+    meCC = function(s)
+        return ns.UnitHasCC and ns.UnitHasCC("player", ns.CC[s.cats])
+    end,
+    -- Yo o alguien de mi grupo con un control de los tipos s.cats (Temblor, Mano de libertad...)
+    groupCC = function(s)
+        return ns.GroupHasCC and ns.GroupHasCC(ns.CC[s.cats])
+    end,
+    -- Yo o alguien de mi grupo con un control o perjuicio importante que puedo quitar
+    dispel = function()
+        return ns.GroupHasCC and ns.GroupHasCC(nil, true)
+    end,
+    -- El objetivo enemigo tiene un beneficio que merece la pena purgar/robar
+    purge = function()
+        return ns.UnitHasPurgeable and ns.UnitHasPurgeable("target")
+    end,
+    dispelOrPurge = function()
+        return ns.conditions.dispel() or ns.conditions.purge()
+    end,
+    -- El objetivo enemigo tiene Escudo divino, Bloque de hielo o Mano de protección
+    shatter = function()
+        return ns.UnitIsShatterable and ns.UnitIsShatterable("target")
+    end,
+}
+
+-- Tipos de control para meCC/groupCC; cada habilidad pone cats = "fear", "root"... (ver CC_SPELLS en Alerts.lua; "snare" = frenado)
+ns.CC = {
+    fear      = { fear = true, charm = true },               -- Temblor, Voluntad de los Renegados
+    fearIncap = { fear = true, incap = true },               -- Ira rabiosa
+    root      = { root = true, snare = true },               -- Mano de libertad, Llamada del maestro...
+    any       = { stun = true, fear = true, incap = true, horror = true, charm = true,
+                  root = true, snare = true },               -- Cada hombre por sí mismo
 }
 
 ---------------------------------------------------------------------------
@@ -419,7 +477,7 @@ local GROUP_ALIAS = { aviso = "main", ofensivas = "cd", ofe = "cd", defensivas =
 local function Help()
     Print("comandos:")
     Print("  /pvpkit config  - abrir la ventana de opciones")
-    Print("  /pvpkit demo  - demostración de las alertas JcJ on/off")
+    Print("  /pvpkit simple  - cambiar entre modo simple (efecto) y detallado (hechizo)")
     Print("  /pvpkit unlock | lock  - mover el aviso y las barras")
     Print("  /pvpkit test  - mostrar todas las habilidades conocidas")
     Print("  /pvpkit size aviso|ofensivas|defensivas <px>  - tamano (actual: " .. db.groups.main.size
@@ -472,8 +530,11 @@ SlashCmdList.PVPKIT = function(msg)
         if not s then Print("numero invalido, usa /pvpkit list") return end
         db.disabled[s.id] = not db.disabled[s.id] or nil
         Print((s.name or s.id) .. ": " .. (db.disabled[s.id] and "desactivada" or "activada"))
-    elseif cmd == "demo" then
+    elseif cmd == "demo" and DEMO_COMMAND then
         Print("demostración de alertas " .. (ns.ToggleDemo() and "activada" or "desactivada"))
+    elseif cmd == "simple" then
+        db.alertSimple = not db.alertSimple
+        Print("alertas en modo " .. (db.alertSimple and "simple (efecto)" or "detallado (hechizo)"))
     elseif cmd == "config" then
         ns.ToggleOptions()
     elseif cmd == "reset" then
@@ -533,6 +594,58 @@ local function UseProfile(name)
     end
 end
 
+---------------------------------------------------------------------------
+-- Perfiles preconfigurados por especializacion (Presets.lua)
+---------------------------------------------------------------------------
+
+local function FindPreset(id)
+    for _, preset in ipairs(ns.PRESETS[ns.class] or {}) do
+        if preset.id == id then return preset end
+    end
+end
+
+-- Rellena un perfil con la configuracion de una especializacion
+local function ApplyPreset(p, preset)
+    CopyDefaults(defaults, p)
+    p.class, p.preset = ns.class, preset.id
+    if preset.mode == "pve" then
+        -- PvE: fuera las alertas de JcJ salvo ¡Córtalo!; los sanadores ven a sus aliados
+        for k, v in pairs(p.alerts.enemy) do
+            if type(v) == "boolean" then p.alerts.enemy[k] = false end
+        end
+        p.alerts.enemy.kick = true
+        local heal = preset.role == "heal"
+        for k, v in pairs(p.alerts.ally) do
+            if type(v) == "boolean" then p.alerts.ally[k] = false end
+        end
+        p.alerts.ally.cc, p.alerts.ally.debuff, p.alerts.ally.health = heal, heal, heal
+        for k in pairs(p.tips) do p.tips[k] = false end
+        for _, k in ipairs(preset.tips or {}) do p.tips[k] = true end
+    end
+    for _, id in ipairs(preset.off or {}) do p.disabled[id] = true end
+    for _, id in ipairs(preset.fav or {}) do p.favorites[id] = true end
+end
+
+-- Crea una sola vez los perfiles de la clase (los que el jugador borre no vuelven)
+local function CreatePresets()
+    root.presets = root.presets or {}
+    local made = root.presets[ns.class] or {}
+    root.presets[ns.class] = made
+    for _, preset in ipairs(ns.PRESETS[ns.class] or {}) do
+        if not made[preset.id] then
+            local name = preset.name
+            -- mismo nombre en otra clase (Protección, Restauración): se le añade la clase
+            if root.profiles[name] then name = name .. " (" .. UnitClass("player") .. ")" end
+            if not root.profiles[name] then
+                local p = { version = 4 }
+                ApplyPreset(p, preset)
+                root.profiles[name] = p
+            end
+            made[preset.id] = true
+        end
+    end
+end
+
 -- Pasa de la version sin perfiles (todo en la raiz) a perfiles
 local function InitRoot()
     PvPKitDB = PvPKitDB or {}
@@ -547,6 +660,7 @@ local function InitRoot()
     end
     root.chars = root.chars or {}
     root.log = root.log or {}
+    CreatePresets()
     local name = root.chars[CharKey()]
     if not name or not root.profiles[name] then name = DEFAULT_PROFILE end
     UseProfile(name)
@@ -554,9 +668,12 @@ end
 
 function ns.GetCurrentProfile() return root.chars[CharKey()] end
 
+-- Perfiles que ve este personaje: los de su clase y los que no son de ninguna (Default y antiguos)
 function ns.GetProfiles()
     local names = {}
-    for name in pairs(root.profiles) do names[#names + 1] = name end
+    for name, p in pairs(root.profiles) do
+        if not p.class or p.class == ns.class then names[#names + 1] = name end
+    end
     table.sort(names)
     return names
 end
@@ -567,12 +684,15 @@ function ns.SetProfile(name)
 end
 
 -- Crea un perfil nuevo (vacio o copia del actual) y lo activa. Devuelve false si el nombre no vale.
-ns.MAX_PROFILES = 5
+ns.MAX_PROFILES = 10
 
+-- El perfil nuevo es de la clase del personaje (guarda sus habilidades); la copia no es un preconfigurado
 function ns.NewProfile(name, copyCurrent)
     name = strtrim(name or "")
     if name == "" or root.profiles[name] or #ns.GetProfiles() >= ns.MAX_PROFILES then return false end
-    root.profiles[name] = copyCurrent and DeepCopy(db) or { version = 4 }
+    local p = copyCurrent and DeepCopy(db) or { version = 4 }
+    p.class, p.preset = ns.class, nil
+    root.profiles[name] = p
     ns.SetProfile(name)
     return true
 end
@@ -591,9 +711,12 @@ function ns.DeleteProfile()
     return true
 end
 
--- Vuelve el perfil activo a la configuracion original
+-- Vuelve el perfil activo a la configuracion original (la de su especializacion si es preconfigurado)
 function ns.ResetDefaults()
-    root.profiles[ns.GetCurrentProfile()] = { version = 4 }
+    local p = { version = 4, class = db.class }
+    local preset = db.preset and FindPreset(db.preset)
+    if preset then ApplyPreset(p, preset) end
+    root.profiles[ns.GetCurrentProfile()] = p
     UseProfile(ns.GetCurrentProfile())
     Print("configuracion restaurada.")
 end

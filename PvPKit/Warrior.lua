@@ -24,7 +24,7 @@ local spells = {
     { id = 46924 },                       -- Bladestorm
     { id = 20230 },                       -- Retaliation
     { id = 57755 },                       -- Heroic Throw
-    { id = 64382 },                       -- Shattering Throw
+    { id = 64382, cond = "shatter" },     -- Shattering Throw, solo contra Escudo divino, Bloque de hielo o Mano de protección
     { id = 100,   cond = "inRange" },     -- Charge, solo entre 8 y 25 m del objetivo
     { id = 20252, cond = "inRange" },     -- Intercept, idem
     { id = 3411,  cond = "inRange" },     -- Intervene, solo con un aliado objetivo a rango
@@ -42,7 +42,7 @@ local spells = {
     { id = 5246,  def = true },                        -- Intimidating Shout
     { id = 1161,  def = true },                        -- Challenging Shout
     { id = 2687,  def = true },                        -- Bloodrage
-    { id = 18499, def = true },                        -- Berserker Rage
+    { id = 18499, def = true, cond = "meCC", cats = "fearIncap" },  -- Berserker Rage, solo con miedo o incapacitado
     { id = 60970, def = true },                        -- Heroic Fury
     { id = 12292, def = true },                        -- Death Wish
     { id = 1719,  def = true },                        -- Recklessness

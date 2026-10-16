@@ -24,6 +24,10 @@ local spells = {
     { id = 19236, def = true },  -- Desperate Prayer
     { id = 586,   def = true },  -- Fade
     { id = 6346,  def = true },  -- Fear Ward
+    { id = 527,   def = true, cond = "dispelOrPurge" },  -- Dispel Magic, si hay algo que quitar o purgar
+    { id = 32375, def = true, cond = "shatter" },        -- Mass Dispel, contra Escudo divino o Bloque de hielo
+    { id = 552,   def = true, cond = "dispel" },         -- Abolish Disease
+    { id = 528,   def = true, cond = "dispel" },         -- Cure Disease
     { id = 14751, def = true },  -- Inner Focus
     { id = 724,   def = true },  -- Lightwell
     { id = 64843, def = true },  -- Divine Hymn

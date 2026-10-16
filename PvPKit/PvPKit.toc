@@ -2,7 +2,7 @@
 ## Title: |cffc79c6ePvP Kit|r
 ## Notes: Muestra en grande las habilidades listas para usar, los procs activos y alertas JcJ (ignora el GCD).
 ## Author: hernandomiguel
-## Version: 0.4.0
+## Version: 0.5.0
 ## SavedVariables: PvPKitDB
 
 Racials.lua
@@ -16,6 +16,7 @@ Paladin.lua
 Hunter.lua
 Warlock.lua
 DeathKnight.lua
+Presets.lua
 Core.lua
 Alerts.lua
 Options.lua

@@ -17,11 +17,13 @@ local TAB_DEFS = {
     { key = "sizes",   label = "Tamaños" },
     { key = "position", label = "Posición" },
     { key = "alerts",   label = "Alertas" },
+    { key = "tips",     label = "Consejos" },
 }
 
 local ALERT_SECTIONS = {
     { key = "ally", title = "Aliados", color = { 0.3, 1, 0.3 }, options = {
         { key = "cc",     label = "Control (CC)" },
+        { key = "snare",  label = "Frenado" },
         { key = "debuff", label = "Perjuicios importantes" },
         { key = "health", label = "Vida baja" },
         { key = "focus",  label = "Lo enfocan (arena)" },
@@ -29,6 +31,7 @@ local ALERT_SECTIONS = {
     } },
     { key = "enemy", title = "Enemigos", color = { 1, 0.3, 0.3 }, options = {
         { key = "cc",         label = "Control (CC) y DR" },
+        { key = "snare",      label = "Frenado" },
         { key = "casts",      label = "Hechizo que lanza" },
         { key = "kick",       label = "¡Córtalo!" },
         { key = "cooldowns",  label = "Cooldowns usados" },
@@ -39,10 +42,10 @@ local ALERT_SECTIONS = {
         { key = "drink",      label = "Bebiendo" },
         { key = "debuff",     label = "Perjuicios" },
         { key = "health",     label = "Vida baja" },
-        { key = "killWindow", label = "¡AHORA!", soon = true },
     } },
 }
 local healthSliders = {}  -- [seccion] = deslizador de vida baja
+local simpleCheck         -- casilla del modo simple
 
 -- Funciones que se pueden apagar por completo (pestana General)
 local FEATURES = {
@@ -52,6 +55,9 @@ local FEATURES = {
     { key = "bar_def", label = "Barra defensiva" },
     { key = "bar_fav", label = "Barra de favoritas" },
     { key = "alerts",  label = "Alertas JcJ (aliados y enemigos)" },
+    { key = "alertPop",   label = "Alertas: aviso en el centro (1,5 s)" },
+    { key = "alertPanel", label = "Alertas: paneles laterales (aliados y enemigos)" },
+    { key = "tips",       label = "Consejos: qué hacer ahora (pestaña Consejos)" },
 }
 
 local checkLists = {}  -- listas de casillas con boton Seleccionar/Deseleccionar todos
@@ -273,20 +279,35 @@ local function SetSliderText(slider, i)
 end
 
 -- Filas de la pestana Tamanos: las barras y ademas las alertas JcJ
+-- Paneles laterales de alertas: tamano y vertical como las barras, guardados en db.panels
+local PANEL_ROWS = {
+    { key = "panel_ally",  panel = "ally",  label = "Panel aliados" },
+    { key = "panel_enemy", panel = "enemy", label = "Panel enemigos" },
+}
+local PANEL_OF = {}
+for _, row in ipairs(PANEL_ROWS) do PANEL_OF[row.key] = row.panel end
+
 local SIZE_ROWS = {}
 for _, grp in ipairs(SIZE_GROUPS) do SIZE_ROWS[#SIZE_ROWS + 1] = grp end
-SIZE_ROWS[#SIZE_ROWS + 1] = { key = "alerts", label = "Alertas JcJ" }
+SIZE_ROWS[#SIZE_ROWS + 1] = { key = "alerts", label = "Alertas (centro)" }
+for _, row in ipairs(PANEL_ROWS) do SIZE_ROWS[#SIZE_ROWS + 1] = row end
+
+-- Configuracion de una barra o de un panel lateral
+local function GroupCfg(key)
+    local db = ns.GetDB()
+    if PANEL_OF[key] then return db.panels[PANEL_OF[key]] end
+    return db.groups[key]
+end
 
 local function GetSize(key)
-    local db = ns.GetDB()
-    if key == "alerts" then return db.alertSize end
-    return db.groups[key].size
+    if key == "alerts" then return ns.GetDB().alertSize end
+    return GroupCfg(key).size
 end
 
 local function SetSize(key, size)
     local db = ns.GetDB()
-    if key == "alerts" then
-        db.alertSize = size
+    if key == "alerts" or PANEL_OF[key] then
+        if key == "alerts" then db.alertSize = size else GroupCfg(key).size = size end
         ns.ApplyAlertsLock()
         ns.ShowDemo()  -- vista previa con la demostracion
     else
@@ -345,7 +366,7 @@ end
 local function UpdatePositionControls()
     local db = ns.GetDB()
     for g, check in pairs(positionControls) do
-        check:SetChecked(db.groups[g].dir == "V")
+        check:SetChecked(GroupCfg(g).dir == "V")
     end
     moveButton:SetText(db.locked and "Mover barras" or "Fijar barras")
 end
@@ -364,18 +385,26 @@ local function BuildPositionPage(page)
     end)
 
     local y = CONTENT_TOP - 60
-    for _, grp in ipairs(SIZE_GROUPS) do
+    local rows = {}
+    for _, grp in ipairs(SIZE_GROUPS) do rows[#rows + 1] = grp end
+    for _, row in ipairs(PANEL_ROWS) do rows[#rows + 1] = row end
+    for _, grp in ipairs(rows) do
         local label = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         label:SetPoint("TOPLEFT", PAD, y - 6)
         label:SetText(grp.label)
 
         local check = CreateFrame("CheckButton", "PvPKitVertical_" .. grp.key, page, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", PAD + 140, y)
-        _G[check:GetName() .. "Text"]:SetText("Vertical")
+        _G[check:GetName() .. "Text"]:SetText(grp.panel and "Vertical (un jugador por columna)" or "Vertical")
         check:SetScript("OnClick", function(self)
-            ns.GetDB().groups[grp.key].dir = self:GetChecked() and "V" or "H"
-            ns.ApplyGroup()
-            ns.StartTest()
+            GroupCfg(grp.key).dir = self:GetChecked() and "V" or "H"
+            if grp.panel then
+                ns.ApplyAlertsLock()
+                ns.ShowDemo()
+            else
+                ns.ApplyGroup()
+                ns.StartTest()
+            end
         end)
 
         positionControls[grp.key] = check
@@ -430,6 +459,16 @@ local function CreateCheckList(page, prefix, x, y, width, title, color, items)
         check:SetWidth(24); check:SetHeight(24)
         check:SetPoint("TOPLEFT", x - 4, y)
         local text = _G[check:GetName() .. "Text"]
+        -- Icono opcional entre la casilla y el texto (para aprenderse el icono)
+        if it.icon then
+            local icon = page:CreateTexture(nil, "ARTWORK")
+            icon:SetWidth(18); icon:SetHeight(18)
+            icon:SetPoint("LEFT", check, "RIGHT", 2, 0)
+            icon:SetTexture(it.icon)
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            text:ClearAllPoints()
+            text:SetPoint("LEFT", icon, "RIGHT", 4, 0)
+        end
         if it.soon then
             text:SetText(it.label .. " (por discutir)")
             text:SetTextColor(0.5, 0.5, 0.5)
@@ -451,6 +490,7 @@ end
 
 local function UpdateCheckLists()
     for _, list in ipairs(checkLists) do list.Update() end
+    simpleCheck:SetChecked(ns.GetDB().alertSimple)
     for section, s in pairs(healthSliders) do
         local value = ns.GetDB().alerts[section].healthPct
         s.updating = true
@@ -465,6 +505,15 @@ local function BuildAlertsPage(page)
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
     help:SetText("Apaga lo que no quieras ver. Casi todo lo de enemigos es para tu\nobjetivo, foco o enemigos de arena; los tótems, de cualquier chamán.")
 
+    -- Modo simple: icono del efecto (Aturdido, Frenado, Lanzando...) en vez del hechizo
+    simpleCheck = CreateFrame("CheckButton", "PvPKitAlertSimple", page, "UICheckButtonTemplate")
+    simpleCheck:SetPoint("TOPLEFT", PAD - 4, CONTENT_TOP - 30)
+    _G[simpleCheck:GetName() .. "Text"]:SetText("Modo simple: mostrar el efecto en vez del hechizo")
+    simpleCheck:SetScript("OnClick", function(self)
+        ns.GetDB().alertSimple = self:GetChecked() and true or false
+        ns.ShowDemo()
+    end)
+
     local lowest = 0
     for col, sec in ipairs(ALERT_SECTIONS) do
         local x = PAD + (col - 1) * 192
@@ -476,7 +525,7 @@ local function BuildAlertsPage(page)
                 set = function(v) ns.GetDB().alerts[sec.key][opt.key] = v end,
             }
         end
-        local _, y = CreateCheckList(page, "PvPKitAlert_" .. sec.key .. "_", x, CONTENT_TOP - 44, 182,
+        local _, y = CreateCheckList(page, "PvPKitAlert_" .. sec.key .. "_", x, CONTENT_TOP - 70, 182,
             sec.title, sec.color, items)
 
         -- Umbral de vida baja de cada seccion
@@ -497,6 +546,42 @@ local function BuildAlertsPage(page)
         lowest = math.min(lowest, y)
     end
     page.height = -lowest + 30
+end
+
+---------------------------------------------------------------------------
+-- Pestana Consejos: los generales y solo los de la clase del personaje
+---------------------------------------------------------------------------
+
+local function BuildTipsPage(page)
+    local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
+    help:SetJustifyH("LEFT")
+    help:SetText("Iconos que te dicen qué hacer, con un título corto. Aprende cada icono.\nCon /pvpkit simple cambias entre el efecto y el hechizo.")
+
+    local general, mine = {}, {}
+    for _, t in ipairs(ns.TIPS) do
+        if ns.TipForClass(t) then
+            local item = {
+                label = t.label, icon = t.icon,
+                get = function() return ns.GetDB().tips[t.key] end,
+                set = function(v) ns.GetDB().tips[t.key] = v end,
+            }
+            table.insert((t.class or t.own) and mine or general, item)
+        end
+    end
+
+    local _, y = CreateCheckList(page, "PvPKitTipGeneral", PAD, CONTENT_TOP - 44, 356, "Generales", nil, general)
+    local classLabel = UnitClass("player")
+    if #mine > 0 then
+        _, y = CreateCheckList(page, "PvPKitTipClass", PAD, y - 14, 356, classLabel,
+            { 1, 0.82, 0 }, mine)
+    else
+        local none = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        none:SetPoint("TOPLEFT", PAD, y - 14)
+        none:SetText("Todavía no hay consejos propios para " .. classLabel .. ".")
+        y = y - 30
+    end
+    page.height = -y + 30
 end
 
 ---------------------------------------------------------------------------
@@ -521,7 +606,7 @@ local function BuildProfileList()
             t.text:SetText(name)
             local selected = name == current
             if selected then t.sel:Show() else t.sel:Hide() end
-            t.text:SetFontObject(selected and GameFontHighlight or GameFontNormal)
+            t.text:SetFontObject(selected and GameFontHighlightSmall or GameFontNormalSmall)
         end
     end
 
@@ -536,10 +621,11 @@ end
 local function BuildProfilesPage(page)
     local help = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     help:SetPoint("TOPLEFT", PAD, CONTENT_TOP)
-    help:SetText("Elige un perfil a la izquierda. Cada personaje recuerda qué perfil usa.")
+    help:SetJustifyH("LEFT")
+    help:SetText("Elige un perfil a la izquierda. Cada personaje recuerda qué perfil usa.\nLos perfiles PvE y PvP vienen preparados para tu clase (tanque, sanador\no daño). Puedes copiarlos o borrarlos. Solo ves los de tu clase.")
 
     currentProfileLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    currentProfileLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 22)
+    currentProfileLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 48)
 
     local actions = {
         { label = "Nuevo",  popup = "PVPKIT_NEW_PROFILE" },
@@ -549,7 +635,7 @@ local function BuildProfilesPage(page)
     for i, act in ipairs(actions) do
         local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
         b:SetWidth(100); b:SetHeight(22)
-        b:SetPoint("TOPLEFT", PAD + (i - 1) * 106, CONTENT_TOP - 48)
+        b:SetPoint("TOPLEFT", PAD + (i - 1) * 106, CONTENT_TOP - 74)
         b:SetText(act.label)
         b:SetScript("OnClick", function()
             StaticPopup_Show(act.popup, ns.GetCurrentProfile())
@@ -562,7 +648,7 @@ local function BuildProfilesPage(page)
     end
 
     countLabel = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    countLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 80)
+    countLabel:SetPoint("TOPLEFT", PAD, CONTENT_TOP - 106)
 
     page.height = 150
 end
@@ -726,6 +812,10 @@ local function CreateWindow()
 
     for i = 1, ns.MAX_PROFILES do
         local t = CreateTab(sidebar, i, { key = "profile" .. i, label = "" })
+        -- nombres largos ("PvE Sanador Restauración"): letra pequeña y se recortan
+        t.text:SetWidth(SIDEBAR_W - 34)
+        t.text:SetHeight(20)
+        t.text:SetJustifyH("LEFT")
         t:ClearAllPoints()
         t:SetPoint("TOPLEFT", 6, -40 - (i - 1) * 24)
         t:SetScript("OnClick", function(self)
@@ -778,6 +868,7 @@ local function CreateWindow()
     BuildPositionPage(pages.position)
     BuildProfilesPage(pages.profiles)
     BuildAlertsPage(pages.alerts)
+    BuildTipsPage(pages.tips)
 
     f:SetScript("OnShow", function()
         local ok, err = pcall(RefreshWindow)

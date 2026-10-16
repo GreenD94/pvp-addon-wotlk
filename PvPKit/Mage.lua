@@ -17,6 +17,8 @@ local spells = {
     -- Defensivas: no hacen dano (cortes, escapes, escudos, potenciadores)
     { id = 2139,  def = true, cond = "interrupt", kick = true },  -- Counterspell
     { id = 1953,  def = true },  -- Blink
+    { id = 30449, def = true, cond = "purge" },   -- Spellsteal, solo si el objetivo tiene algo que robar
+    { id = 475,   def = true, cond = "dispel" },  -- Remove Curse
     { id = 45438, def = true },  -- Ice Block
     { id = 11426, def = true },  -- Ice Barrier
     { id = 543,   def = true },  -- Fire Ward

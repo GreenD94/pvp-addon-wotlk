@@ -20,7 +20,11 @@ local spells = {
 
     -- Defensivas: no hacen dano (control, curacion, totems de utilidad, potenciadores)
     { id = 57994, def = true, cond = "interrupt", kick = true },  -- Wind Shear
-    { id = 8177,  def = true },  -- Grounding Totem
+    { id = 8177,  def = true, cond = "castingOnMe" },  -- Grounding Totem, solo si el objetivo me castea a mi
+    { id = 8143,  def = true, cond = "groupCC", cats = "fear" },  -- Tremor Totem, solo con miedo o seduccion en el grupo
+    { id = 51886, def = true, cond = "dispel" },  -- Cleanse Spirit, solo si hay algo que quitar
+    { id = 526,   def = true, cond = "dispel" },  -- Cure Toxins, idem
+    { id = 370,   def = true, cond = "purge" },   -- Purge, solo si el objetivo tiene algo que purgar
     { id = 2484,  def = true },  -- Earthbind Totem
     { id = 5730,  def = true },  -- Stoneclaw Totem
     { id = 51514, def = true },  -- Hex

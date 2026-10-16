@@ -32,7 +32,8 @@ local spells = {
     { id = 19263, def = true },  -- Deterrence
     { id = 5384,  def = true },  -- Feign Death
     { id = 781,   def = true },  -- Disengage
-    { id = 53271, def = true },  -- Master's Call
+    { id = 53271, def = true, cond = "groupCC", cats = "root" },  -- Master's Call, solo con raices o frenados en el grupo
+    { id = 19801, def = true, cond = "purge" },  -- Tranquilizing Shot, solo si el objetivo tiene algo que quitar
     { id = 34477, def = true },  -- Misdirection
     { id = 1543,  def = true },  -- Flare
     { id = 3045,  def = true },  -- Rapid Fire

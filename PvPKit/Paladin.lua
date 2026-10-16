@@ -25,7 +25,9 @@ local spells = {
     { id = 498,   def = true },  -- Divine Protection
     { id = 633,   def = true },  -- Lay on Hands
     { id = 1022,  def = true },  -- Hand of Protection
-    { id = 1044,  def = true },  -- Hand of Freedom
+    { id = 1044,  def = true, cond = "groupCC", cats = "root" },  -- Hand of Freedom, solo con raices o frenados en el grupo
+    { id = 4987,  def = true, cond = "dispel" },  -- Cleanse
+    { id = 1152,  def = true, cond = "dispel" },  -- Purify
     { id = 6940,  def = true },  -- Hand of Sacrifice
     { id = 1038,  def = true },  -- Hand of Salvation
     { id = 20473, def = true },  -- Holy Shock
